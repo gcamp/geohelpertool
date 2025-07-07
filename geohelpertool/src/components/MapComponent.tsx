@@ -1,4 +1,4 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
 import Map, { NavigationControl, ScaleControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './MapComponent.css';
@@ -38,6 +38,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
   const mapRef = useRef<MapRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const layerManagerRef = useRef<MapLayerManager | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
   const { state, actions } = useLayerContext();
   const { showSuccess, showError } = useNotification();
 
@@ -332,6 +333,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
 
       const handleMapLoad = () => {
         layerManagerRef.current = new MapLayerManager(map);
+        setIsMapReady(true);
       };
 
       if (map.loaded()) {
@@ -367,9 +369,11 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       if (map && !layerManagerRef.current) {
         if (map.loaded()) {
           layerManagerRef.current = new MapLayerManager(map);
+          setIsMapReady(true);
         } else {
           map.on('load', () => {
             layerManagerRef.current = new MapLayerManager(map);
+            setIsMapReady(true);
           });
         }
       }
@@ -416,7 +420,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
         removeMapLayer(sourceId);
       }
     });
-  }, [state.layers, layerManagerRef.current]);
+  }, [state.layers, isMapReady]);
 
   // Effect to sync layer visibility
   useEffect(() => {
@@ -425,7 +429,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     state.layers.forEach(layer => {
       updateLayerVisibility(layer.id, layer.visibility);
     });
-  }, [state.layers.map(layer => `${layer.id}-${layer.visibility}`).join(','), layerManagerRef.current]);
+  }, [state.layers.map(layer => `${layer.id}-${layer.visibility}`).join(','), isMapReady]);
 
   // Effect to sync layer colors and styles
   useEffect(() => {
@@ -437,7 +441,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
         layerManager.updateLayerStyle(layer.id, layer);
       }
     });
-  }, [state.layers.map(layer => `${layer.id}-${layer.color}-${JSON.stringify(layer.options)}`).join(','), layerManagerRef.current]);
+  }, [state.layers.map(layer => `${layer.id}-${layer.color}-${JSON.stringify(layer.options)}`).join(','), isMapReady]);
 
   // Effect to update layer data when it changes
   useEffect(() => {
@@ -449,7 +453,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
         layerManager.updateSource(layer.id, layer.data);
       }
     });
-  }, [state.layers.map(layer => `${layer.id}-${JSON.stringify(layer.data)}`).join(','), layerManagerRef.current]);
+  }, [state.layers.map(layer => `${layer.id}-${JSON.stringify(layer.data)}`).join(','), isMapReady]);
 
   // Effect to fit map to layers when layers are added
   useEffect(() => {

@@ -257,14 +257,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
         <div className="sidebar-section">
           <div className="section-header">
             <h3 className="section-title">Layers</h3>
-            {state.layers.length > 0 && onFitToLayers && (
-              <button
-                onClick={onFitToLayers}
-                className="fit-layers-btn"
-                title="Fit map to show all layers"
-              >
-                🎯
-              </button>
+            {state.layers.length > 0 && (
+              <div className="layer-actions-header">
+                {onFitToLayers && (
+                  <button
+                    onClick={onFitToLayers}
+                    className="fit-layers-btn"
+                    title="Fit map to show all layers"
+                  >
+                    🎯
+                  </button>
+                )}
+                <button
+                  onClick={() => actions.clearLayers()}
+                  className="remove-all-layers-btn"
+                  title="Remove all layers"
+                >
+                  🗑️
+                </button>
+              </div>
             )}
           </div>
           <div className={`layers-container ${state.layers.length === 0 ? 'empty' : 'has-layers'}`}>

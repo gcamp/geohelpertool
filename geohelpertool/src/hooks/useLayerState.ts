@@ -1,7 +1,8 @@
-import { useReducer, useCallback, useMemo } from 'react';
+import { useReducer, useCallback, useMemo, useEffect, useState } from 'react';
 import { LayerType, ColorPalette } from '../types/layer';
-import type { Layer, LayerOptions } from '../types/layer';
+import type { Layer, LayerOptions, LayerState } from '../types/layer';
 import { layerReducer, initialLayerState, layerManagement } from '../utils/layerManagement';
+import { saveLayersToStorage, loadLayersFromStorage, clearLayersFromStorage } from '../utils/localStorage';
 // @ts-ignore - Used in type annotations
 import type { GeoJSON } from 'geojson';
 
@@ -9,7 +10,26 @@ import type { GeoJSON } from 'geojson';
  * Custom hook for layer state management
  */
 export const useLayerState = () => {
-  const [state, dispatch] = useReducer(layerReducer, initialLayerState);
+  // Initialize state by loading from localStorage first
+  const getInitialState = (): LayerState => {
+    const savedState = loadLayersFromStorage();
+    return savedState || initialLayerState;
+  };
+
+  const [state, dispatch] = useReducer(layerReducer, getInitialState());
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Mark as initialized after first render
+  useEffect(() => {
+    setIsInitialized(true);
+  }, []);
+
+  // Save layers to localStorage whenever state changes (but not during initialization)
+  useEffect(() => {
+    if (isInitialized) {
+      saveLayersToStorage(state);
+    }
+  }, [state, isInitialized]);
 
   /**
    * Action creators with useCallback for stable references
@@ -79,6 +99,7 @@ export const useLayerState = () => {
 
   const clearLayers = useCallback(() => {
     dispatch({ type: 'CLEAR_LAYERS' });
+    clearLayersFromStorage();
   }, []);
 
   const updateLayerName = useCallback((id: string, name: string) => {

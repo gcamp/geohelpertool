@@ -5,7 +5,6 @@ import { valid } from 'geojson-validation';
 import { booleanValid } from '@turf/boolean-valid';
 import * as polyline from '@mapbox/polyline';
 import * as wkt from 'wkt';
-import { Layer } from 'react-map-gl/maplibre';
 
 export interface ParseResult {
   success: boolean;
@@ -368,7 +367,6 @@ export function parseLatLngList(input: string): ParseResult {
       );
     }
 
-    // Create FeatureCollection with individual points instead of LineString
     const features: Feature[] = coordinates.map((coord, index) => ({
       type: 'Feature',
       geometry: {
@@ -418,9 +416,9 @@ export function parseMultiFormat(input: string, options?: { unescape?: boolean }
     // Try parsing with each format in order of likelihood until one succeeds
     const formats = [
       { name: 'GeoJSON', parser: () => parseGeoJSON(cleanInput) },
+      { name: 'Lat/Lng List', parser: () => parseLatLngList(cleanInput) },
       { name: 'WKT', parser: () => parseWKT(cleanInput) },
       { name: 'Polyline', parser: () => parsePolyline(cleanInput, { unescape: options?.unescape }) },
-      { name: 'Lat/Lng List', parser: () => parseLatLngList(cleanInput) }
     ];
     
     const errors: string[] = [];

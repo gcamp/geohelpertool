@@ -1,6 +1,5 @@
 import { LayerType, ColorPalette } from '../types/layer';
 import type { Layer } from '../types/layer';
-import { parseMultiFormat } from './geoJsonParser';
 
 /**
  * Generates a unique layer ID

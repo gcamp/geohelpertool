@@ -446,6 +446,31 @@
   transform: scale(1.05);
 }
 
+.layer-actions-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.remove-all-layers-btn {
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  color: #dc3545;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.remove-all-layers-btn:hover {
+  background: rgba(220, 53, 69, 0.2);
+  border-color: rgba(220, 53, 69, 0.3);
+  transform: scale(1.05);
+}
+
 
 /* Layer Content Styles */
 .layer-content {
