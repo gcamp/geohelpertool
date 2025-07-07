@@ -1,0 +1,31 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.5673, 45.5017]
+      },
+      "properties": {
+        "name": "Test Point",
+        "description": "A simple test point in Montreal"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-73.5673, 45.5017],
+          [-73.5600, 45.5100],
+          [-73.5500, 45.5200]
+        ]
+      },
+      "properties": {
+        "name": "Test Line",
+        "description": "A simple test line"
+      }
+    }
+  ]
+}

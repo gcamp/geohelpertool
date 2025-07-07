@@ -1,0 +1,144 @@
+Of course. Here is the final PRD, which now includes the requirements for a serverless architecture, in-browser usability, testing, and a CI/CD pipeline for automated builds.
+
+### **Overview**
+
+This document outlines the requirements for a React-based web application designed as a debugging tool. It will allow users to visualize various geospatial data formats on an interactive Apple Map. The primary function is to render data like GeoJSON, encoded polylines, WKT, and latitude/longitude lists on distinct, toggleable layers to help with the validation and debugging of geographical information. The entire application will be self-contained in a single HTML file, requiring no server-side components or external dependencies to run in a browser.
+
+***
+
+### **Core Features**
+
+* **Direct Data Input**:
+    * Pasting a string of data directly onto the page will automatically create a new layer on the map.
+    * Users can also drag and drop files onto the page to create layers.
+* **Interactive MapLibre GL JS Map Display**: An interactive map powered by MapLibre GL JS will serve as the canvas for data visualization.
+* **Right Sidebar for Layer Management**: A sidebar on the right will be rendered on top of the map.
+    * This sidebar will contain all the layers and their associated options.
+    * This sidebar will include a visible note informing users that they can drag and drop items or paste content directly onto the page to add new layers.
+* **Toggleable Layers**: The sidebar will list all rendered data layers, allowing users to toggle their visibility.
+* **Auto-detection of Data Types**: The application will automatically detect the format of pasted data.
+    * If JSON is detected, it will first be validated as GeoJSON.
+    * If it's not valid GeoJSON, the system will attempt to parse it as a partial GeoJSON (e.g., the content of a `geometry` key).
+* **Multi-format Support**:
+    * **GeoJSON**: Full support for GeoJSON objects.
+    * **Encoded Polyline**: Support for encoded polyline strings.
+    * **WKT**: Support for Well-Known Text representations.
+    * **List of Lat/Lng**: Support for lists of latitude and longitude coordinates in a CSV-like format. Autodetect the seperator.
+* **Data-Specific Options**:
+    * **Encoded Polyline**: An option to unescape backslashes (`\`) will be provided, enabled by default if the string contains `\\`.
+    * **Lat/Lng List**: An option to switch the latitude and longitude values will be available.
+* **Layer Styling and Color Logic**:
+    * **Single Layer**: If only one layer exists, the map will attempt to use styling information (like color) from the pasted GeoJSON data, if present. If no styling is defined, a default color will be used.
+    * **Multiple Layers**: When more than one layer is present, the colors displayed on the map for each layer will be explicitly determined by the color pill selected for that layer in the right sidebar.
+    * Each new layer will be assigned a default color from a predefined palette, represented by a color pill emoji (e.g., 🔵, 🟢, 🔴).
+    * Users will have an option to change the color pill for each layer in the sidebar.
+
+***
+
+### **User Experience**
+
+The user journey is designed for a technical user who needs to quickly debug geospatial data.
+
+#### **User Persona**
+
+* **Transit App Debugger**: A developer or data analyst working at the Transit app. They are tasked with identifying and resolving issues related to bus routes, station locations, and other geographical data that is often represented in formats like GeoJSON or encoded polylines. They need a quick, visual way to confirm that data is being rendered correctly or to understand why it might be appearing incorrectly in the main application.
+
+#### **Key User Flows**
+
+1.  **Add Data**: The user either drags a file onto the page or pastes a string of geospatial data.
+2.  **Automatic Rendering and View Adjustment**: The app auto-detects the type, parses it, and renders it as a new layer. The map immediately adjusts its view to fit all visible layers, including the new one.
+3.  **Add More Layers**: The user adds a second data layer. The map view updates again to show both layers simultaneously. The colors for both layers on the map are now explicitly controlled by their respective color pills in the sidebar.
+4.  **Inspect and Debug**: The user can analyze the shapes and locations on the map.
+5.  **Adjust Options and Styles**: In the right sidebar, the user can toggle layer visibility, use data-specific options (like unescaping a polyline), or click the color pill to change the color of a specific layer for better visual distinction.
+
+#### **UI/UX Considerations**
+
+* The interface will consist of the map as a full-screen background element, with the controls sidebar rendered on top of the map on the right-hand side.
+* The sidebar should contains nothing but a notice that the user can paste or drag and drop item
+* The sidebar will be clearly organized, with each layer getting its own card containing all relevant toggles and options. 
+* Each card should be a rounded corner rectagle that contains : a text feild with the inputed data, a dropdown with the colored emoji to select the color, the relevant option for the type of data, a toggle checkbox to show/hide the layer. 
+* Feedback on data parsing will be immediate. Clear, actionable error messages will appear if the data cannot be parsed.
+
+***
+
+### **Technical Architecture**
+
+#### **System Components**
+
+* **Frontend**: A React application built with maintainable, separate components.
+* **Map Component**: `react-map-gl` for Mapbox GL JS in React
+* **Data Parsing**:
+    * **GeoJSON**: A robust, dedicated library (like `geojson`) will be used for parsing, validation, and extracting style properties.
+    * **Encoded Polyline**: The `@mapbox/polyline` library or a similar alternative will be used.
+    * **WKT**: The `wkt` npm package will be used to convert WKT to GeoJSON.
+* **Deployment**: The entire application will be bundled into a single HTML file, which can be run directly in any modern browser without needing a web server.
+
+#### **Testing**
+
+* Unit tests will be written for the core data parsing and utility functions to ensure their correctness and prevent regressions. This includes tests for:
+    * Auto-detection of data types.
+    * Parsing of each supported format (GeoJSON, Polyline, WKT, Lat/Lng).
+    * Correct application of data-specific options (e.g., unescaping polylines, swapping lat/lng).
+
+#### **Continuous Integration (CI)**
+
+* A CI pipeline will be set up using GitHub Actions.
+* On every push to the main branch, the CI will:
+    1.  Install all project dependencies.
+    2.  Run the full suite of unit tests.
+    3.  If tests pass, run a build script that compiles the React application and all its assets into a single `index.html` file.
+    4.  Create a new release on GitHub and attach the `index.html` file as a downloadable artifact.
+
+#### **Data Models**
+
+* All input data will be normalized into a GeoJSON structure before being passed to the map component to ensure a consistent rendering pipeline.
+
+***
+
+### **Development Roadmap**
+
+#### **MVP Requirements**
+
+* Set up a basic React app with an Apple Map component as the background and a sidebar overlay.
+* Implement the "paste-to-create-layer" functionality for a single GeoJSON data layer.
+* When the first layer is added, the map should zoom to its extent.
+* Implement the single-layer color logic: use color from GeoJSON properties if available, otherwise use a default.
+* Display the layer in the sidebar with a visibility toggle and a default color pill.
+
+#### **Followup Enhancements**
+
+* Implement the drag-and-drop functionality.
+* Add support for encoded polyline, WKT, and lat/lng lists.
+* Implement the map view adjustment to show all layers when new ones are added.
+* Implement the multi-layer color logic where the map colors are driven by the pill selection.
+* Build the UI for changing a layer's color pill.
+* Implement the advanced GeoJSON parsing (handling partials/errors).
+* Persist layers in local storage so they reappear on page refresh.
+
+***
+
+### **Logical Dependency Chain**
+
+1.  **Apple Maps and Sidebar Layout**: The foundational step is to get the Apple Map rendering as a background and the right sidebar overlaid within a React component.
+2.  **Single GeoJSON Layer Workflow**: Create the core workflow of pasting data, parsing GeoJSON (including its style properties), displaying it on the map, and adding its entry to the sidebar. The map should zoom to this layer.
+3.  **State Management for Multiple Layers**: Implement the state management to handle multiple layers and their properties (color pill, visibility, etc.).
+4.  **Map Bounds Adjustment**: Implement the logic to calculate the bounding box of all visible layers and adjust the map view accordingly whenever a layer is added or its visibility is toggled.
+5.  **Multi-Layer Color Logic**: Refactor the rendering logic to switch from "source-of-truth" GeoJSON styling to "source-of-truth" color pill styling when more than one layer is active.
+6.  **Add Other Data Parsers**: Build out support for the other data formats atomically.
+7.  **UI for Options**: Develop the UI components for data-specific options and for changing layer colors.
+
+***
+
+### **Risks and Mitigations**
+
+* **Technical Challenges**:
+    * **Apple Maps API Restrictions**: Apple's API has usage limits and might have stricter terms of service than other providers.
+        * **Mitigation**: Monitor usage closely. Ensure all development and deployment is done in accordance with Apple's terms of service.
+    * **Extracting Style from GeoJSON**: GeoJSON itself has no formal specification for styling. It is often added in the `properties` block, but the schema can vary.
+        * **Mitigation**: Initially, support a few common styling schemas (e.g., `properties.color`, `properties.style`). Document which properties are checked.
+    * **Performance of Bounding Box Calculation**: Calculating the combined bounding box for many complex layers in real-time could be slow.
+        * **Mitigation**: Memoize calculations and only re-compute when the set of visible layers changes. For very complex layers, use a simplified version of the geometry for the initial bounds calculation.
+* **Figuring out the MVP**:
+    * **Mitigation**: The MVP is tightly scoped to the most common use case (visualizing a single GeoJSON) on the chosen map platform, which validates the entire pipeline from input to render.
+* **Resource Constraints**: Limited development time or resources.
+    * **Mitigation**: The phased development roadmap allows for incremental delivery of features, ensuring that a usable product is available early on.

@@ -1,0 +1,23 @@
+.map-container {
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.map-nav-control {
+  margin-right: 340px;
+}
+
+@media (max-width: 768px) {
+  .map-nav-control {
+    margin-right: 16px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .map-nav-control {
+    margin-right: 300px;
+  }
+}
