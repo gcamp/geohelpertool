@@ -18,9 +18,10 @@ export const useLayerState = () => {
     data: GeoJSON.FeatureCollection,
     type: LayerType,
     options?: LayerOptions,
-    name?: string
+    name?: string,
+    originalContent?: string
   ) => {
-    const layerData = layerManagement.addLayer(data, type, options, name, state.layers);
+    const layerData = layerManagement.addLayer(data, type, options, name, state.layers, originalContent);
     dispatch({ type: 'ADD_LAYER', payload: layerData });
   }, [state.layers]);
 
@@ -80,16 +81,26 @@ export const useLayerState = () => {
     dispatch({ type: 'CLEAR_LAYERS' });
   }, []);
 
+  const updateLayerName = useCallback((id: string, name: string) => {
+    if (layerManagement.validateLayerId(id, state.layers)) {
+      const updatePayload = layerManagement.updateLayerName(id, name);
+      dispatch({ type: 'UPDATE_LAYER', payload: updatePayload });
+    } else {
+      console.warn(`Layer with id ${id} not found`);
+    }
+  }, [state.layers]);
+
   const actions = useMemo(() => ({
     addLayer,
     removeLayer,
     updateLayer,
+    updateLayerName,
     toggleVisibility,
     updateColor,
     updateOptions,
     setActiveLayer,
     clearLayers
-  }), [addLayer, removeLayer, updateLayer, toggleVisibility, updateColor, updateOptions, setActiveLayer, clearLayers]);
+  }), [addLayer, removeLayer, updateLayer, updateLayerName, toggleVisibility, updateColor, updateOptions, setActiveLayer, clearLayers]);
 
   /**
    * Computed values

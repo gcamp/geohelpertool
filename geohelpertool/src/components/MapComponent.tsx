@@ -3,9 +3,7 @@ import Map, { NavigationControl, ScaleControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './MapComponent.css';
 import { useLayerContext } from '../hooks/useLayerContextHook';
-import { parseMultiFormat, detectDataType } from '../utils/geoJsonParser';
 import { detectAndParseLayer } from '../utils/layerTypeDetector';
-import { LayerType } from '../types/layer';
 import { useNotification } from './NotificationContainer';
 import { MapLayerManager } from '../utils/mapLayerManager';
 import bbox from '@turf/bbox';
@@ -306,18 +304,10 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       const { layerType, layerOptions, parseResult } = detectAndParseLayer(text);
       
       if (parseResult.success && parseResult.data) {
-        const layerName = `Pasted Layer ${new Date().toLocaleTimeString()}`;
+        const layerName = 'Pasted Layer';
         const featureCollection = convertToFeatureCollection(parseResult.data);
-        actions.addLayer(featureCollection, layerType, layerOptions, layerName);
+        actions.addLayer(featureCollection, layerType, layerOptions, layerName, text);
         showSuccess('Layer Added Successfully', 'Pasted data has been added to the map');
-        
-        // Store the original content for editing by dispatching a custom event
-        // Use a ref to track the layer that was just added
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('storeLayerContent', {
-            detail: { content: text }
-          }));
-        }, 50);
       } else {
         console.error('Failed to parse pasted data:', parseResult.error);
         showError('Failed to Parse Data', parseResult.error || 'Unknown error occurred while parsing the pasted data');

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import './Sidebar.css';
 import { useLayerContext } from '../hooks/useLayerContextHook';
-import { parseMultiFormat, detectDataType } from '../utils/geoJsonParser';
+import { parseMultiFormat } from '../utils/geoJsonParser';
 import { detectAndParseLayer } from '../utils/layerTypeDetector';
 import { LayerType } from '../types/layer';
 import { useNotification } from './NotificationContainer';
@@ -20,9 +20,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [layerContent, setLayerContent] = useState<Record<string, string>>({});
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
+  const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const convertToFeatureCollection = (geoJson: GeoJSON.GeoJSON): GeoJSON.FeatureCollection => {
     if (geoJson.type === 'FeatureCollection') {
@@ -44,23 +45,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
     }
   };
 
-  // Listen for custom events to store original layer content
-  useEffect(() => {
-    const handleStoreLayerContent = (event: CustomEvent) => {
-      const { content } = event.detail;
-      // Find the most recently added layer
-      if (state.layers.length > 0) {
-        const mostRecentLayer = state.layers[state.layers.length - 1];
-        setLayerContent(prev => ({ ...prev, [mostRecentLayer.id]: content }));
-      }
-    };
-
-    window.addEventListener('storeLayerContent', handleStoreLayerContent as EventListener);
-    
-    return () => {
-      window.removeEventListener('storeLayerContent', handleStoreLayerContent as EventListener);
-    };
-  }, [state.layers]);
 
   // Resize functionality
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -100,20 +84,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
     };
   }, [isResizing]);
 
-  // Store layer content when layers are added (fallback for when original content isn't available)
-  useEffect(() => {
-    // Find the most recently added layer and store its content if needed
-    if (state.layers.length > 0) {
-      const recentLayer = state.layers[state.layers.length - 1];
-      if (!layerContent[recentLayer.id]) {
-        // Initialize with empty content or try to serialize the GeoJSON
-        const content = recentLayer.data.features.length > 0 
-          ? JSON.stringify(recentLayer.data, null, 2) 
-          : '';
-        setLayerContent(prev => ({ ...prev, [recentLayer.id]: content }));
-      }
-    }
-  }, [state.layers.length, layerContent]);
 
   const handleDragEnter = (event: React.DragEvent) => {
     event.preventDefault();
@@ -152,7 +122,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
             
             if (parseResult.success && parseResult.data) {
               const featureCollection = convertToFeatureCollection(parseResult.data);
-              actions.addLayer(featureCollection, layerType, layerOptions, layerName);
+              actions.addLayer(featureCollection, layerType, layerOptions, layerName, content);
               showSuccess('Layer Added Successfully', `File "${file.name}" has been added to the map`);
             } else {
               // Add layer anyway, but as empty/invisible
@@ -160,17 +130,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                 type: 'FeatureCollection',
                 features: []
               };
-              actions.addLayer(emptyFeatureCollection, LayerType.GEOJSON, {}, layerName);
+              actions.addLayer(emptyFeatureCollection, LayerType.GEOJSON, {}, layerName, content);
               showError('Layer Added with Errors', `File "${file.name}" was added but contains errors: ${parseResult.error}`);
             }
-            
-            // Store the original content for editing
-            setTimeout(() => {
-              const mostRecentLayer = state.layers[state.layers.length - 1];
-              if (mostRecentLayer) {
-                setLayerContent(prev => ({ ...prev, [mostRecentLayer.id]: content }));
-              }
-            }, 100);
           }
         };
         reader.readAsText(file);
@@ -183,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
       
       if (parseResult.success && parseResult.data) {
         const featureCollection = convertToFeatureCollection(parseResult.data);
-        actions.addLayer(featureCollection, layerType, layerOptions, layerName);
+        actions.addLayer(featureCollection, layerType, layerOptions, layerName, textData);
         showSuccess('Layer Added Successfully', 'Dropped data has been added to the map');
       } else {
         // Add layer anyway, but as empty/invisible
@@ -191,17 +153,35 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
           type: 'FeatureCollection',
           features: []
         };
-        actions.addLayer(emptyFeatureCollection, LayerType.GEOJSON, {}, layerName);
+        actions.addLayer(emptyFeatureCollection, LayerType.GEOJSON, {}, layerName, textData);
         showError('Layer Added with Errors', `Dropped data was added but contains errors: ${parseResult.error}`);
       }
-      
-      // Store the original content for editing
-      setTimeout(() => {
-        const mostRecentLayer = state.layers[state.layers.length - 1];
-        if (mostRecentLayer) {
-          setLayerContent(prev => ({ ...prev, [mostRecentLayer.id]: textData }));
-        }
-      }, 100);
+    }
+  };
+
+  const handleEditLayerName = (layerId: string, currentName: string) => {
+    setEditingLayerId(layerId);
+    setEditingName(currentName);
+  };
+
+  const handleSaveLayerName = (layerId: string) => {
+    if (editingName.trim()) {
+      actions.updateLayerName(layerId, editingName.trim());
+    }
+    setEditingLayerId(null);
+    setEditingName('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLayerId(null);
+    setEditingName('');
+  };
+
+  const handleKeyPress = (event: React.KeyboardEvent, layerId: string) => {
+    if (event.key === 'Enter') {
+      handleSaveLayerName(layerId);
+    } else if (event.key === 'Escape') {
+      handleCancelEdit();
     }
   };
 
@@ -283,7 +263,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                   <div key={layer.id} className="layer-item">
                     <div className="layer-header">
                       <div className="layer-info">
-                        <h4 className="layer-name">{layer.name}</h4>
+                        {editingLayerId === layer.id ? (
+                          <input
+                            type="text"
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            onBlur={() => handleSaveLayerName(layer.id)}
+                            onKeyDown={(e) => handleKeyPress(e, layer.id)}
+                            className="layer-name-input"
+                            autoFocus
+                          />
+                        ) : (
+                          <h4 
+                            className="layer-name" 
+                            onClick={() => handleEditLayerName(layer.id, layer.name || 'Unnamed Layer')}
+                          >
+                            {layer.name || 'Unnamed Layer'}
+                          </h4>
+                        )}
                         <p className="layer-type">{layer.type}</p>
                       </div>
                       <div className="layer-actions">
@@ -304,10 +301,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                     
                     <div className="layer-content">
                       <textarea
-                        value={layerContent[layer.id] || ''}
+                        value={layer.originalContent || (layer.data.features.length > 0 ? JSON.stringify(layer.data, null, 2) : '')}
                         onChange={(e) => {
                           const newContent = e.target.value;
-                          setLayerContent(prev => ({ ...prev, [layer.id]: newContent }));
+                          actions.updateLayer(layer.id, { originalContent: newContent });
                         }}
                         onBlur={(e) => {
                           const newContent = e.target.value;
@@ -324,7 +321,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                               actions.updateLayer(layer.id, { 
                                 data: featureCollection,
                                 type: layerType,
-                                options: layerOptions
+                                options: layerOptions,
+                                originalContent: newContent
                               });
                             } else {
                               showError('Parse Error', parseResult.error || 'Failed to parse updated content');
@@ -351,7 +349,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                                 actions.updateLayer(layer.id, { options: newOptions });
                                 
                                 // Re-parse the original content and apply coordinate reversal
-                                const currentContent = layerContent[layer.id];
+                                const currentContent = layer.originalContent;
                                 if (currentContent && currentContent.trim()) {
                                   // Parse the original content to get coordinates in their original format
                                   const numbers = currentContent.match(/-?\d+\.?\d*/g);
@@ -422,7 +420,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                                 actions.updateLayer(layer.id, { options: newOptions });
                                 
                                 // Re-parse the original content with updated unescape option
-                                const currentContent = layerContent[layer.id];
+                                const currentContent = layer.originalContent;
                                 if (currentContent && currentContent.trim()) {
                                   const parseResult = parseMultiFormat(currentContent, { 
                                     unescapeForwardSlashes: e.target.checked 

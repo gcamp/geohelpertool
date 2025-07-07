@@ -122,13 +122,15 @@ export const layerManagement = {
     type: LayerType,
     options: LayerOptions = {},
     name?: string,
-    existingLayers: Layer[] = []
+    existingLayers: Layer[] = [],
+    originalContent?: string
   ): Omit<Layer, 'id' | 'createdAt' | 'updatedAt'> => {
     const color = getNextColor(existingLayers);
     const layerName = name || generateLayerName(type, existingLayers.length);
     
     return {
       data,
+      originalContent,
       color,
       visibility: true,
       type,
@@ -170,6 +172,16 @@ export const layerManagement = {
    */
   getLayersByType: (type: LayerType, layers: Layer[]): Layer[] => {
     return layers.filter(layer => layer.type === type);
+  },
+
+  /**
+   * Update layer name
+   */
+  updateLayerName: (id: string, name: string): { id: string; updates: Partial<Layer> } => {
+    return {
+      id,
+      updates: { name }
+    };
   },
 
   /**

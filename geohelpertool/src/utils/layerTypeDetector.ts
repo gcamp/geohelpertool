@@ -1,8 +1,9 @@
 import { detectDataType, parseMultiFormat } from './geoJsonParser';
 import { LayerType } from '../types/layer';
+import type { LayerType as LayerTypeEnum } from '../types/layer';
 
 export interface LayerDetectionResult {
-  layerType: LayerType;
+  layerType: LayerTypeEnum;
   layerOptions: Record<string, any>;
   parseOptions?: Record<string, any>;
   parseResult: any;
@@ -10,7 +11,7 @@ export interface LayerDetectionResult {
 
 export function detectAndParseLayer(content: string): LayerDetectionResult {
   const detectedType = detectDataType(content);
-  let layerType = LayerType.GEOJSON;
+  let layerType: LayerTypeEnum = LayerType.GEOJSON;
   let layerOptions = {};
   
   if (detectedType === 'latlng') layerType = LayerType.COORDINATES;

@@ -104,7 +104,10 @@ export const generateLayerName = (type: LayerType, index: number): string => {
     [LayerType.KML]: 'KML',
     [LayerType.GPX]: 'GPX',
     [LayerType.SHAPEFILE]: 'Shapefile',
-    [LayerType.CSV]: 'CSV'
+    [LayerType.CSV]: 'CSV',
+    [LayerType.COORDINATES]: 'Coordinates',
+    [LayerType.WKT]: 'WKT',
+    [LayerType.POLYLINE]: 'Polyline'
   };
   
   return `${typeNames[type]} Layer ${index + 1}`;

@@ -40,6 +40,7 @@ export interface LayerOptions {
 export interface Layer {
   id: string;
   data: GeoJSON.FeatureCollection;
+  originalContent?: string;
   color: ColorPalette;
   visibility: boolean;
   type: LayerType;
