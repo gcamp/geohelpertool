@@ -12,7 +12,7 @@ export interface MapLayerConfig {
   id: string;
   sourceId: string;
   type: 'circle' | 'line' | 'fill';
-  geometryType: 'Point' | 'LineString' | 'Polygon';
+  geometryType: 'Point' | 'LineString' | 'Polygon' | 'MultiPolygon';
   paint: Record<string, any>;
   layout: Record<string, any>;
   filter?: ['==', '$type', string];
@@ -106,8 +106,8 @@ export class MapLayerManager {
     const useGeoJsonStyles = this.hasGeoJsonStyles(layer.data);
 
     geometryTypes.forEach(geometryType => {
-      if (geometryType === 'Polygon') {
-        // Handle polygon fill layer
+      if (geometryType === 'Polygon' || geometryType === 'MultiPolygon') {
+        // Handle polygon/multipolygon fill layer
         const fillConfig = this.createLayerConfig(
           layerId,
           layerGroup.sourceId,
@@ -128,12 +128,13 @@ export class MapLayerManager {
           layerGroup.layerIds.push(fillConfig.id);
         }
 
-        // Handle polygon stroke layer
+        // Handle polygon/multipolygon stroke layer
         const strokeConfig = this.createPolygonStrokeConfig(
           layerId,
           layerGroup.sourceId,
           layer,
-          useGeoJsonStyles
+          useGeoJsonStyles,
+          geometryType
         );
 
         if (!this.map.getLayer(strokeConfig.id)) {
@@ -348,13 +349,15 @@ export class MapLayerManager {
         };
 
       case 'Polygon':
-        // For polygons, we need both fill and stroke layers
+      case 'MultiPolygon':
+        // For polygons and multipolygons, we need both fill and stroke layers
         // This returns the fill layer config; stroke is handled separately
+        // Note: MapLibre treats MultiPolygon as Polygon in $type filters
         return {
           id: `${baseId}-fills`,
           sourceId,
           type: 'fill',
-          geometryType: 'Polygon',
+          geometryType: geometryType as 'Polygon',
           filter: ['==', '$type', 'Polygon'],
           paint: {
             'fill-color': useGeoJsonStyles
@@ -376,7 +379,8 @@ export class MapLayerManager {
     layerId: string,
     sourceId: string,
     layer: Layer,
-    useGeoJsonStyles: boolean
+    useGeoJsonStyles: boolean,
+    geometryType: string = 'Polygon'
   ): MapLayerConfig {
     const baseId = `layer-${layerId}`;
     
@@ -384,8 +388,8 @@ export class MapLayerManager {
       id: `${baseId}-strokes`,
       sourceId,
       type: 'line',
-      geometryType: 'Polygon',
-      filter: ['==', '$type', 'Polygon'],
+      geometryType: geometryType as 'Polygon',
+      filter: ['==', '$type', 'Polygon'], // MapLibre treats MultiPolygon as Polygon in $type filters
       paint: {
         'line-color': useGeoJsonStyles
           ? ['case', ['has', 'stroke'], ['get', 'stroke'], ['has', 'stroke-color'], ['get', 'stroke-color'], getMapLayerColor(layer.color)]

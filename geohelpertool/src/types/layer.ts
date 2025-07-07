@@ -4,9 +4,6 @@ import type { GeoJSON } from 'geojson';
 export const LayerType = {
   GEOJSON: 'geojson',
   KML: 'kml',
-  GPX: 'gpx',
-  SHAPEFILE: 'shapefile',
-  CSV: 'csv',
   COORDINATES: 'coordinates',
   WKT: 'wkt',
   POLYLINE: 'polyline'
@@ -33,7 +30,7 @@ export interface LayerOptions {
   showLabels?: boolean;
   labelField?: string;
   reverseCoordinates?: boolean;
-  unescapeForwardSlashes?: boolean;
+  unescape?: boolean;
   [key: string]: unknown;
 }
 

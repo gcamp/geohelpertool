@@ -645,20 +645,8 @@
 
 /* Layer Options */
 .layer-options {
+  width: 100%;
   margin-top: 12px;
-  padding: 12px;
-  background-color: rgba(248, 249, 250, 0.8);
-  border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.options-title {
-  margin: 0 0 8px 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .option-item {
@@ -682,6 +670,70 @@
 
 .option-text {
   user-select: none;
+}
+
+/* Color Pill Styles */
+.color-pill-container {
+  position: relative;
+  display: inline-block;
+}
+
+.color-pill-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-pill-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  transform: scale(1.1);
+}
+
+.color-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1000;
+  min-width: 40px;
+}
+
+.color-option {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-option:hover {
+  background: rgba(0, 0, 0, 0.05);
+  transform: scale(1.05);
+}
+
+.color-option.selected {
+  background: rgba(0, 123, 255, 0.1);
+  border: 1px solid rgba(0, 123, 255, 0.3);
 }
 
 /* Tablet specific adjustments */

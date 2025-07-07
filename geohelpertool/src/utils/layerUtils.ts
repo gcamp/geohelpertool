@@ -1,5 +1,6 @@
 import { LayerType, ColorPalette } from '../types/layer';
 import type { Layer } from '../types/layer';
+import { parseMultiFormat } from './geoJsonParser';
 
 /**
  * Generates a unique layer ID
@@ -57,54 +58,12 @@ export const getNextColor = (existingLayers: Layer[]): ColorPalette => {
 };
 
 /**
- * Detects layer type from file extension or content
- */
-export const detectLayerType = (filename?: string, content?: string): LayerType => {
-  if (filename) {
-    const ext = filename.toLowerCase().split('.').pop();
-    switch (ext) {
-      case 'geojson':
-      case 'json':
-        return LayerType.GEOJSON;
-      case 'kml':
-        return LayerType.KML;
-      case 'gpx':
-        return LayerType.GPX;
-      case 'shp':
-        return LayerType.SHAPEFILE;
-      case 'csv':
-        return LayerType.CSV;
-      default:
-        return LayerType.GEOJSON;
-    }
-  }
-  
-  if (content) {
-    const trimmed = content.trim();
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-      return LayerType.GEOJSON;
-    }
-    if (trimmed.startsWith('<?xml') || trimmed.includes('<kml')) {
-      return LayerType.KML;
-    }
-    if (trimmed.startsWith('<?xml') || trimmed.includes('<gpx')) {
-      return LayerType.GPX;
-    }
-  }
-  
-  return LayerType.GEOJSON;
-};
-
-/**
  * Generates a default layer name based on type and index
  */
 export const generateLayerName = (type: LayerType, index: number): string => {
   const typeNames = {
     [LayerType.GEOJSON]: 'GeoJSON',
     [LayerType.KML]: 'KML',
-    [LayerType.GPX]: 'GPX',
-    [LayerType.SHAPEFILE]: 'Shapefile',
-    [LayerType.CSV]: 'CSV',
     [LayerType.COORDINATES]: 'Coordinates',
     [LayerType.WKT]: 'WKT',
     [LayerType.POLYLINE]: 'Polyline'

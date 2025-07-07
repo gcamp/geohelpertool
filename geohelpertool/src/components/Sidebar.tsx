@@ -3,7 +3,7 @@ import './Sidebar.css';
 import { useLayerContext } from '../hooks/useLayerContextHook';
 import { parseMultiFormat } from '../utils/geoJsonParser';
 import { detectAndParseLayer } from '../utils/layerTypeDetector';
-import { LayerType } from '../types/layer';
+import { LayerType, ColorPalette } from '../types/layer';
 import { useNotification } from './NotificationContainer';
 // @ts-ignore - Used in type annotations
 import type { GeoJSON } from 'geojson';
@@ -24,6 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
   const [isResizing, setIsResizing] = useState(false);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [colorDropdownOpen, setColorDropdownOpen] = useState<string | null>(null);
 
   const convertToFeatureCollection = (geoJson: GeoJSON.GeoJSON): GeoJSON.FeatureCollection => {
     if (geoJson.type === 'FeatureCollection') {
@@ -185,6 +186,30 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
     }
   };
 
+  const handleColorChange = (layerId: string, color: ColorPalette) => {
+    actions.updateColor(layerId, color);
+    setColorDropdownOpen(null);
+  };
+
+  const getColorOptions = () => {
+    return Object.entries(ColorPalette).map(([key, value]) => ({
+      key,
+      value,
+      emoji: value
+    }));
+  };
+
+  // Close color dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (colorDropdownOpen && !(event.target as Element).closest('.color-pill-container')) {
+        setColorDropdownOpen(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [colorDropdownOpen]);
+
   return (
     <div 
       ref={sidebarRef}
@@ -199,11 +224,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
       <div className="sidebar-content">
         <div className="sidebar-header">
           <h2 className="sidebar-title">GeoHelper Tool</h2>
-          <p className="sidebar-subtitle">Layer Management</p>
+          <p className="sidebar-subtitle">Display GeoJSON, encoded polyline, KML, anything that looks like a coordoinates on the map</p>
         </div>
         
         <div className="sidebar-section">
-          <h3 className="section-title">Upload Files</h3>
+          <h3 className="section-title">Add data</h3>
           <div className="instruction-block">
             <div 
               ref={dropZoneRef}
@@ -228,18 +253,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
             </div>
           </div>
         </div>
-
-        <div className="sidebar-section">
-          <h3 className="section-title">Supported Formats</h3>
-          <div className="format-list">
-            <span className="format-tag">GeoJSON</span>
-            <span className="format-tag">KML</span>
-            <span className="format-tag">GPX</span>
-            <span className="format-tag">Shapefile</span>
-            <span className="format-tag">CSV</span>
-          </div>
-        </div>
-
 
         <div className="sidebar-section">
           <div className="section-header">
@@ -284,6 +297,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                         <p className="layer-type">{layer.type}</p>
                       </div>
                       <div className="layer-actions">
+                        <div className="color-pill-container">
+                          <button
+                            onClick={() => setColorDropdownOpen(colorDropdownOpen === layer.id ? null : layer.id)}
+                            className="color-pill-btn"
+                            title="Change layer color"
+                          >
+                            {layer.color}
+                          </button>
+                          {colorDropdownOpen === layer.id && (
+                            <div className="color-dropdown">
+                              {getColorOptions().map(({ key, value, emoji }) => (
+                                <button
+                                  key={key}
+                                  onClick={() => handleColorChange(layer.id, value)}
+                                  className={`color-option ${layer.color === value ? 'selected' : ''}`}
+                                  title={`${key.toLowerCase()} color`}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <button
                           onClick={() => actions.toggleVisibility(layer.id)}
                           className={`visibility-btn ${layer.visibility ? 'visible' : 'hidden'}`}
@@ -338,7 +374,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                     {/* Layer Options */}
                     {layer.type === LayerType.COORDINATES && (
                       <div className="layer-options">
-                        <h4 className="options-title">Options</h4>
                         <div className="option-item">
                           <label className="option-label">
                             <input
@@ -409,21 +444,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                     {/* Polyline Options */}
                     {layer.type === LayerType.POLYLINE && (
                       <div className="layer-options">
-                        <h4 className="options-title">Options</h4>
                         <div className="option-item">
                           <label className="option-label">
                             <input
                               type="checkbox"
-                              checked={layer.options.unescapeForwardSlashes || false}
+                              checked={layer.options.unescape || false}
                               onChange={(e) => {
-                                const newOptions = { ...layer.options, unescapeForwardSlashes: e.target.checked };
+                                const newOptions = { ...layer.options, unescape: e.target.checked };
                                 actions.updateLayer(layer.id, { options: newOptions });
                                 
                                 // Re-parse the original content with updated unescape option
                                 const currentContent = layer.originalContent;
                                 if (currentContent && currentContent.trim()) {
                                   const parseResult = parseMultiFormat(currentContent, { 
-                                    unescapeForwardSlashes: e.target.checked 
+                                    unescape: e.target.checked 
                                   });
                                   if (parseResult.success && parseResult.data) {
                                     const featureCollection = convertToFeatureCollection(parseResult.data);
@@ -442,7 +476,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                                 }
                               }}
                             />
-                            <span className="option-text">Remove Forward Slash Escaping</span>
+                            <span className="option-text">Remove '\` escapes</span>
                           </label>
                         </div>
                       </div>

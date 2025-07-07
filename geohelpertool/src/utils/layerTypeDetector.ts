@@ -1,4 +1,4 @@
-import { detectDataType, parseMultiFormat } from './geoJsonParser';
+import { parseMultiFormat } from './geoJsonParser';
 import { LayerType } from '../types/layer';
 import type { LayerType as LayerTypeEnum } from '../types/layer';
 
@@ -10,19 +10,13 @@ export interface LayerDetectionResult {
 }
 
 export function detectAndParseLayer(content: string): LayerDetectionResult {
-  const detectedType = detectDataType(content);
-  let layerType: LayerTypeEnum = LayerType.GEOJSON;
-  let layerOptions = {};
+  const layerOptions = {};
   
-  if (detectedType === 'latlng') layerType = LayerType.COORDINATES;
-  else if (detectedType === 'wkt') layerType = LayerType.WKT;
-  else if (detectedType === 'polyline') {
-    layerType = LayerType.POLYLINE;
-    layerOptions = { unescapeForwardSlashes: content.indexOf('//') !== -1 };
-  }
-  
-  const parseOptions = detectedType === 'polyline' ? { unescapeForwardSlashes: (layerOptions as any).unescapeForwardSlashes } : undefined;
+  const parseOptions = undefined;
   const parseResult = parseMultiFormat(content, parseOptions);
+  
+  // Use the format from the parse result, or default to GEOJSON
+  const layerType: LayerTypeEnum = parseResult.format || LayerType.GEOJSON;
   
   return {
     layerType,

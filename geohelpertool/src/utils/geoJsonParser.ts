@@ -1,9 +1,11 @@
 import type { GeoJSON, FeatureCollection, Feature, Geometry } from 'geojson';
+import { LayerType } from '../types/layer';
 // @ts-ignore - No types available for geojson-validation
 import { valid } from 'geojson-validation';
 import { booleanValid } from '@turf/boolean-valid';
 import * as polyline from '@mapbox/polyline';
 import * as wkt from 'wkt';
+import { Layer } from 'react-map-gl/maplibre';
 
 export interface ParseResult {
   success: boolean;
@@ -12,6 +14,7 @@ export interface ParseResult {
   errorCode?: string;
   errorDetails?: string;
   type?: 'FeatureCollection' | 'Feature' | 'Geometry';
+  format?: LayerType;
   geometryCount?: number;
   isPartialGeoJSON?: boolean;
   styleProperties?: StyleProperties[];
@@ -156,9 +159,9 @@ function extractAllStyleProperties(geoJson: GeoJSON): StyleProperties[] {
   return styles;
 }
 
-export function parsePolyline(input: string, options: { unescape?: boolean; unescapeForwardSlashes?: boolean } = { unescape: true }): ParseResult {
+export function parsePolyline(input: string, options: { unescape?: boolean; } = { unescape: true }): ParseResult {
   try {
-    const cleanInput = input.trim();
+    var cleanInput = input.trim();
     
     if (!cleanInput) {
       return createErrorResult(
@@ -168,26 +171,12 @@ export function parsePolyline(input: string, options: { unescape?: boolean; unes
       );
     }
 
-    // Auto-detect if unescaping is needed
-    const shouldUnescape = options.unescape && cleanInput.indexOf('\\') !== -1;
-    const shouldUnescapeForwardSlashes = options.unescapeForwardSlashes !== undefined 
-      ? options.unescapeForwardSlashes 
-      : cleanInput.indexOf('//') !== -1; // Auto-detect if there are double forward slashes
-    
-    let processedInput = cleanInput;
-    
-    // Apply backslash unescaping if needed
-    if (shouldUnescape) {
-      processedInput = processedInput.replace(/\\/g, '');
-    }
-    
-    // Apply forward slash unescaping if needed
-    if (shouldUnescapeForwardSlashes) {
-      processedInput = processedInput.replace(/\/\//g, '/');
+    if (options.unescape) {
+      cleanInput = cleanInput.replace(/\\(.)/g, '$1');
     }
 
     // Decode the polyline
-    const coordinates = polyline.decode(processedInput);
+    const coordinates = polyline.decode(cleanInput);
     
     if (!coordinates || coordinates.length === 0) {
       return createErrorResult(
@@ -229,6 +218,7 @@ export function parsePolyline(input: string, options: { unescape?: boolean; unes
       success: true,
       data: lineString,
       type: 'Feature',
+      format: LayerType.POLYLINE,
       geometryCount: 1,
       styleProperties: []
     };
@@ -292,6 +282,7 @@ export function parseWKT(input: string): ParseResult {
       success: true,
       data: feature,
       type: 'Feature',
+      format: LayerType.WKT,
       geometryCount: 1,
       styleProperties: []
     };
@@ -398,6 +389,7 @@ export function parseLatLngList(input: string): ParseResult {
       success: true,
       data: featureCollection,
       type: 'FeatureCollection',
+      format: LayerType.COORDINATES,
       geometryCount: coordinates.length,
       styleProperties: []
     };
@@ -410,42 +402,8 @@ export function parseLatLngList(input: string): ParseResult {
   }
 }
 
-export function detectDataType(input: string): 'json' | 'polyline' | 'wkt' | 'latlng' | 'unknown' {
-  const cleanInput = input.trim();
-  
-  // Check for JSON (starts with { or [ AND is valid JSON)
-  if (cleanInput.charAt(0) === '{' || cleanInput.charAt(0) === '[') {
-    try {
-      JSON.parse(cleanInput);
-      return 'json'; // Only return 'json' if it's actually parseable JSON
-    } catch {
-      // If it starts with { or [ but isn't valid JSON, continue with other checks
-    }
-  }
-  
-  // Check for WKT (starts with geometry type keywords)
-  const wktPattern = /^(POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON|GEOMETRYCOLLECTION)\s*\(/i;
-  if (wktPattern.test(cleanInput)) {
-    return 'wkt';
-  }
-  
-  // Check for encoded polyline (typically contains encoded characters)
-  // Updated pattern to include more valid polyline characters like ~, `, |, [], etc.
-  const polylinePattern = /^[a-zA-Z0-9_\\@?{}~`|[\]\-]+$/;
-  if (polylinePattern.test(cleanInput) && cleanInput.length > 10) {
-    return 'polyline';
-  }
-  
-  // Check for lat/lng list (contains numbers and separators)
-  const latlngPattern = /^[\d\s,;.\-]+$/;
-  if (latlngPattern.test(cleanInput)) {
-    return 'latlng';
-  }
-  
-  return 'unknown';
-}
 
-export function parseMultiFormat(input: string, options?: { unescapeForwardSlashes?: boolean }): ParseResult {
+export function parseMultiFormat(input: string, options?: { unescape?: boolean }): ParseResult {
   try {
     const cleanInput = input.trim();
     
@@ -457,52 +415,34 @@ export function parseMultiFormat(input: string, options?: { unescapeForwardSlash
       );
     }
 
-    const dataType = detectDataType(cleanInput);
+    // Try parsing with each format in order of likelihood until one succeeds
+    const formats = [
+      { name: 'GeoJSON', parser: () => parseGeoJSON(cleanInput) },
+      { name: 'WKT', parser: () => parseWKT(cleanInput) },
+      { name: 'Polyline', parser: () => parsePolyline(cleanInput, { unescape: options?.unescape }) },
+      { name: 'Lat/Lng List', parser: () => parseLatLngList(cleanInput) }
+    ];
     
-    // Try parsing based on detected type
-    switch (dataType) {
-      case 'json':
-        return parseGeoJSON(cleanInput);
-      
-      case 'polyline':
-        return parsePolyline(cleanInput, { unescape: true, unescapeForwardSlashes: options?.unescapeForwardSlashes });
-      
-      case 'wkt':
-        return parseWKT(cleanInput);
-      
-      case 'latlng':
-        return parseLatLngList(cleanInput);
-      
-      default:
-        // If auto-detection fails, try formats in order of likelihood
-        const formats = [
-          { name: 'GeoJSON', parser: () => parseGeoJSON(cleanInput) },
-          { name: 'WKT', parser: () => parseWKT(cleanInput) },
-          { name: 'Polyline', parser: () => parsePolyline(cleanInput, { unescape: true, unescapeForwardSlashes: options?.unescapeForwardSlashes }) },
-          { name: 'Lat/Lng List', parser: () => parseLatLngList(cleanInput) }
-        ];
-        
-        const errors: string[] = [];
-        
-        for (const format of formats) {
-          const result = format.parser();
-          if (result.success) {
-            return result;
-          }
-          errors.push(`${format.name}: ${result.error}`);
-        }
-        
-        return createErrorResult(
-          'Auto-detection failed',
-          ERROR_CODES.AUTO_DETECTION_ERROR,
-          `Unable to parse input as any supported format. Tried: ${errors.join('; ')}`
-        );
+    const errors: string[] = [];
+    
+    for (const format of formats) {
+      const result = format.parser();
+      if (result.success) {
+        return result;
+      }
+      errors.push(`${format.name}: ${result.error}`);
     }
+    
+    return createErrorResult(
+      'Unable to parse input',
+      ERROR_CODES.AUTO_DETECTION_ERROR,
+      `Unable to parse input as any supported format. Tried: ${errors.join('; ')}`
+    );
   } catch (error) {
     return createErrorResult(
       `Multi-format parsing failed: ${error}`,
       ERROR_CODES.AUTO_DETECTION_ERROR,
-      'An unexpected error occurred during auto-detection and parsing'
+      'An unexpected error occurred during parsing'
     );
   }
 }
@@ -560,6 +500,7 @@ export function parsePartialGeoJSON(input: string | object): ParseResult {
         success: true,
         data: feature,
         type: 'Feature',
+        format: LayerType.GEOJSON,
         geometryCount: 1,
         isPartialGeoJSON: true,
         styleProperties
@@ -733,6 +674,7 @@ export function parseGeoJSON(input: string | object): ParseResult {
       success: true,
       data: parsedData as GeoJSON,
       type: parsedData.type as 'FeatureCollection' | 'Feature' | 'Geometry',
+      format: LayerType.GEOJSON,
       geometryCount,
       styleProperties
     };

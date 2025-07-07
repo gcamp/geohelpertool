@@ -17,7 +17,8 @@
       "Bash(rg:*)",
       "Bash(node:*)",
       "Bash(rm:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }
