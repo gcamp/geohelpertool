@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './MapComponent.css';
 import { useLayerContext } from '../hooks/useLayerContextHook';
 import { parseMultiFormat, detectDataType } from '../utils/geoJsonParser';
+import { detectAndParseLayer } from '../utils/layerTypeDetector';
 import { LayerType } from '../types/layer';
 import { useNotification } from './NotificationContainer';
 import { MapLayerManager } from '../utils/mapLayerManager';
@@ -301,22 +302,8 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
 
       event.preventDefault();
 
-      // Determine the layer type based on detected data type first
-      const detectedType = detectDataType(text);
-      let layerType = LayerType.GEOJSON;
-      let layerOptions = {};
-      
-      if (detectedType === 'latlng') layerType = LayerType.COORDINATES;
-      else if (detectedType === 'wkt') layerType = LayerType.WKT;
-      else if (detectedType === 'polyline') {
-        layerType = LayerType.POLYLINE;
-        // Auto-detect if forward slash unescaping should be enabled
-        layerOptions = { unescapeForwardSlashes: text.indexOf('//') !== -1 };
-      }
-      
-      // Parse with the appropriate options
-      const parseOptions = detectedType === 'polyline' ? { unescapeForwardSlashes: layerOptions.unescapeForwardSlashes } : undefined;
-      const parseResult = parseMultiFormat(text, parseOptions);
+      // Determine the layer type and parse data
+      const { layerType, layerOptions, parseResult } = detectAndParseLayer(text);
       
       if (parseResult.success && parseResult.data) {
         const layerName = `Pasted Layer ${new Date().toLocaleTimeString()}`;

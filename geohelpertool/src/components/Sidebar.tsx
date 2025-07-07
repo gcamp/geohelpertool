@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import './Sidebar.css';
 import { useLayerContext } from '../hooks/useLayerContextHook';
 import { parseMultiFormat, detectDataType } from '../utils/geoJsonParser';
+import { detectAndParseLayer } from '../utils/layerTypeDetector';
 import { LayerType } from '../types/layer';
 import { useNotification } from './NotificationContainer';
 // @ts-ignore - Used in type annotations
@@ -146,22 +147,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
           if (content) {
             const layerName = `${file.name} ${new Date().toLocaleTimeString()}`;
             
-            // Determine the layer type based on detected data type first
-            const detectedType = detectDataType(content);
-            let layerType = LayerType.GEOJSON;
-            let layerOptions = {};
-            
-            if (detectedType === 'latlng') layerType = LayerType.COORDINATES;
-            else if (detectedType === 'wkt') layerType = LayerType.WKT;
-            else if (detectedType === 'polyline') {
-              layerType = LayerType.POLYLINE;
-              // Auto-detect if forward slash unescaping should be enabled
-              layerOptions = { unescapeForwardSlashes: content.indexOf('//') !== -1 };
-            }
-            
-            // Parse with the appropriate options
-            const parseOptions = detectedType === 'polyline' ? { unescapeForwardSlashes: layerOptions.unescapeForwardSlashes } : undefined;
-            const parseResult = parseMultiFormat(content, parseOptions);
+            // Determine the layer type and parse data
+            const { layerType, layerOptions, parseResult } = detectAndParseLayer(content);
             
             if (parseResult.success && parseResult.data) {
               const featureCollection = convertToFeatureCollection(parseResult.data);
@@ -191,22 +178,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
     } else if (textData) {
       const layerName = `Dropped Layer ${new Date().toLocaleTimeString()}`;
       
-      // Determine the layer type based on detected data type first
-      const detectedType = detectDataType(textData);
-      let layerType = LayerType.GEOJSON;
-      let layerOptions = {};
-      
-      if (detectedType === 'latlng') layerType = LayerType.COORDINATES;
-      else if (detectedType === 'wkt') layerType = LayerType.WKT;
-      else if (detectedType === 'polyline') {
-        layerType = LayerType.POLYLINE;
-        // Auto-detect if forward slash unescaping should be enabled
-        layerOptions = { unescapeForwardSlashes: textData.indexOf('//') !== -1 };
-      }
-      
-      // Parse with the appropriate options
-      const parseOptions = detectedType === 'polyline' ? { unescapeForwardSlashes: layerOptions.unescapeForwardSlashes } : undefined;
-      const parseResult = parseMultiFormat(textData, parseOptions);
+      // Determine the layer type and parse data
+      const { layerType, layerOptions, parseResult } = detectAndParseLayer(textData);
       
       if (parseResult.success && parseResult.data) {
         const featureCollection = convertToFeatureCollection(parseResult.data);
@@ -341,22 +314,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                           
                           // Update layer when focus is lost
                           if (newContent.trim()) {
-                            // Determine the layer type based on detected data type first
-                            const detectedType = detectDataType(newContent);
-                            let layerType = LayerType.GEOJSON;
-                            let layerOptions = { ...layer.options };
-                            
-                            if (detectedType === 'latlng') layerType = LayerType.COORDINATES;
-                            else if (detectedType === 'wkt') layerType = LayerType.WKT;
-                            else if (detectedType === 'polyline') {
-                              layerType = LayerType.POLYLINE;
-                              // Auto-detect and update forward slash unescaping option
-                              layerOptions.unescapeForwardSlashes = newContent.indexOf('//') !== -1;
-                            }
-                            
-                            // Parse with the appropriate options
-                            const parseOptions = detectedType === 'polyline' ? { unescapeForwardSlashes: layerOptions.unescapeForwardSlashes } : undefined;
-                            const parseResult = parseMultiFormat(newContent, parseOptions);
+                            // Determine the layer type and parse data
+                            const { layerType, layerOptions: newLayerOptions, parseResult } = detectAndParseLayer(newContent);
+                            const layerOptions = { ...layer.options, ...newLayerOptions };
                             
                             if (parseResult.success && parseResult.data) {
                               const featureCollection = convertToFeatureCollection(parseResult.data);
