@@ -137,8 +137,8 @@ describe('parseGeoJSON', () => {
       // Some coordinate validation libraries accept values outside standard ranges
       if (result.success) {
         // If it succeeds, at least verify the structure is correct
-        expect(result.data.type).toBe('Feature')
-        expect(result.data.geometry.type).toBe('Point')
+        expect(result.data?.type).toBe('Feature')
+        expect((result.data as { geometry?: { type?: string } })?.geometry?.type).toBe('Point')
       } else {
         expect(result.errorCode).toBe(ERROR_CODES.INVALID_GEOMETRY)
       }
@@ -208,7 +208,7 @@ describe('parsePartialGeoJSON', () => {
     // Coordinate validation might be more lenient than expected
     if (result.success) {
       expect(result.isPartialGeoJSON).toBe(true)
-      expect(result.data.geometry.type).toBe('Point')
+      expect((result.data as { geometry?: { type?: string } })?.geometry?.type).toBe('Point')
     } else {
       expect(result.errorCode).toBe(ERROR_CODES.INVALID_GEOMETRY)
     }

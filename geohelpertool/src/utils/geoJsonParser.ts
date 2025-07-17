@@ -95,13 +95,13 @@ function isGeometryObject(
     obj !== null &&
     typeof obj === "object" &&
     "type" in obj &&
-    geometryTypes.indexOf((obj as any).type) !== -1 &&
-    ("coordinates" in obj || (obj as any).type === "GeometryCollection")
+    geometryTypes.indexOf((obj as { type: string }).type) !== -1 &&
+    ("coordinates" in obj || (obj as { type: string }).type === "GeometryCollection")
   );
 }
 
 export function extractStyleProperties(
-  properties: Record<string, unknown>
+  properties: Record<string, unknown> | null | undefined
 ): StyleProperties {
   if (!properties || typeof properties !== "object") {
     return {};
@@ -189,7 +189,7 @@ export function parsePolyline(
   options: { unescape?: boolean } = { unescape: true }
 ): ParseResult {
   try {
-    var cleanInput = input.trim();
+    let cleanInput = input.trim();
 
     if (!cleanInput) {
       return createErrorResult(
@@ -600,8 +600,11 @@ export function parseGeoJSON(input: string | object): ParseResult {
     }
 
     // Basic GeoJSON structure validation (more lenient)
-    const isValidGeoJSON = (data: unknown): boolean => {
+    const isValidGeoJSON = (data: unknown): data is Record<string, unknown> => {
       if (!data || typeof data !== "object") return false;
+      
+      const obj = data as Record<string, unknown>;
+      if (!obj.type || typeof obj.type !== "string") return false;
 
       const validTypes = [
         "Point",
@@ -615,14 +618,16 @@ export function parseGeoJSON(input: string | object): ParseResult {
         "FeatureCollection",
       ];
 
-      if (!validTypes.includes(data.type)) return false;
+      if (!validTypes.includes(obj.type)) return false;
 
-      if (data.type === "FeatureCollection") {
-        return Array.isArray(data.features);
-      } else if (data.type === "Feature") {
-        return data.geometry && validTypes.includes(data.geometry.type);
+      if (obj.type === "FeatureCollection") {
+        return Array.isArray(obj.features);
+      } else if (obj.type === "Feature") {
+        return !!(obj.geometry && typeof obj.geometry === "object" && obj.geometry !== null && 
+               typeof (obj.geometry as Record<string, unknown>).type === "string" &&
+               validTypes.includes((obj.geometry as Record<string, unknown>).type as string));
       } else {
-        return data.coordinates !== undefined || data.geometries !== undefined;
+        return obj.coordinates !== undefined || obj.geometries !== undefined;
       }
     };
 
@@ -632,7 +637,7 @@ export function parseGeoJSON(input: string | object): ParseResult {
       const validationResult = valid(parsedData);
       if (!validationResult.valid) {
         // If both fail, try partial GeoJSON parsing
-        const partialResult = parsePartialGeoJSON(parsedData);
+        const partialResult = parsePartialGeoJSON(parsedData as string | object);
         if (partialResult.success) {
           return partialResult;
         }
@@ -648,37 +653,38 @@ export function parseGeoJSON(input: string | object): ParseResult {
     }
 
     // Additional geometry validation for geometries
+    const data = parsedData as Record<string, unknown>;
     if (
-      parsedData.type === "Point" ||
-      parsedData.type === "LineString" ||
-      parsedData.type === "Polygon" ||
-      parsedData.type === "MultiPoint" ||
-      parsedData.type === "MultiLineString" ||
-      parsedData.type === "MultiPolygon" ||
-      parsedData.type === "GeometryCollection"
+      data.type === "Point" ||
+      data.type === "LineString" ||
+      data.type === "Polygon" ||
+      data.type === "MultiPoint" ||
+      data.type === "MultiLineString" ||
+      data.type === "MultiPolygon" ||
+      data.type === "GeometryCollection"
     ) {
       try {
-        if (!booleanValid(parsedData as Geometry)) {
-          const suggestion = getGeometryErrorSuggestion(parsedData.type);
+        if (!booleanValid(data as unknown as Geometry)) {
+          const suggestion = getGeometryErrorSuggestion(data.type as string);
           return createErrorResult(
             "Invalid geometry: coordinates are not valid",
             ERROR_CODES.INVALID_GEOMETRY,
-            `The ${parsedData.type} geometry has invalid coordinates. ${suggestion}`
+            `The ${data.type} geometry has invalid coordinates. ${suggestion}`
           );
         }
       } catch (geometryError) {
-        const suggestion = getGeometryErrorSuggestion(parsedData.type);
+        const suggestion = getGeometryErrorSuggestion(data.type as string);
         return createErrorResult(
           `Geometry validation failed: ${geometryError}`,
           ERROR_CODES.VALIDATION_ERROR,
-          `Failed to validate ${parsedData.type} geometry. ${suggestion}`
+          `Failed to validate ${data.type} geometry. ${suggestion}`
         );
       }
     }
 
     // Validate geometries in Features and FeatureCollections
-    if (parsedData.type === "Feature") {
-      const feature = parsedData as Feature;
+    if (data.type === "Feature") {
+      const feature = data as unknown as Feature;
       if (feature.geometry) {
         try {
           if (!booleanValid(feature.geometry)) {
@@ -703,8 +709,8 @@ export function parseGeoJSON(input: string | object): ParseResult {
       }
     }
 
-    if (parsedData.type === "FeatureCollection") {
-      const featureCollection = parsedData as FeatureCollection;
+    if (data.type === "FeatureCollection") {
+      const featureCollection = data as unknown as FeatureCollection;
       for (let i = 0; i < featureCollection.features.length; i++) {
         const feature = featureCollection.features[i];
         if (feature.geometry) {
@@ -734,24 +740,24 @@ export function parseGeoJSON(input: string | object): ParseResult {
 
     // Count geometries for reporting
     let geometryCount = 0;
-    if (parsedData.type === "FeatureCollection") {
-      geometryCount = (parsedData as FeatureCollection).features.length;
-    } else if (parsedData.type === "Feature") {
+    if (data.type === "FeatureCollection") {
+      geometryCount = (data as unknown as FeatureCollection).features.length;
+    } else if (data.type === "Feature") {
       geometryCount = 1;
-    } else if (parsedData.type === "GeometryCollection") {
-      geometryCount = (parsedData as { geometries: unknown[] }).geometries
+    } else if (data.type === "GeometryCollection") {
+      geometryCount = (data as { geometries: unknown[] }).geometries
         .length;
     } else {
       geometryCount = 1;
     }
 
     // Extract style properties
-    const styleProperties = extractAllStyleProperties(parsedData as GeoJSON);
+    const styleProperties = extractAllStyleProperties(data as unknown as GeoJSON);
 
     return {
       success: true,
-      data: parsedData as GeoJSON,
-      type: parsedData.type as "FeatureCollection" | "Feature" | "Geometry",
+      data: data as unknown as GeoJSON,
+      type: data.type as "FeatureCollection" | "Feature" | "Geometry",
       format: LayerType.GEOJSON,
       geometryCount,
       styleProperties,

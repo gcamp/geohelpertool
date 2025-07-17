@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseLatLngList, ERROR_CODES } from '../geoJsonParser'
 import { LayerType } from '../../types/layer'
+import type { FeatureCollection, Point } from 'geojson'
 
 describe('parseLatLngList', () => {
   describe('valid lat/lng list parsing', () => {
@@ -13,16 +14,16 @@ describe('parseLatLngList', () => {
       expect(result.type).toBe('FeatureCollection')
       expect(result.geometryCount).toBe(3)
       
-      const featureCollection = result.data
-      expect(featureCollection.type).toBe('FeatureCollection')
-      expect(featureCollection.features).toHaveLength(3)
+      const featureCollection = result.data as FeatureCollection
+      expect(featureCollection?.type).toBe('FeatureCollection')
+      expect(featureCollection?.features).toHaveLength(3)
       
       // Check first point (converted to lng,lat format for GeoJSON)
-      expect(featureCollection.features[0].geometry).toEqual({
+      expect(featureCollection?.features?.[0]?.geometry).toEqual({
         type: 'Point',
         coordinates: [-73.9857, 40.7484]  // [lng, lat]
       })
-      expect(featureCollection.features[0].properties.index).toBe(1)
+      expect(featureCollection?.features?.[0]?.properties?.index).toBe(1)
     })
 
     it('should parse space-separated lat/lng pairs', () => {
@@ -32,9 +33,9 @@ describe('parseLatLngList', () => {
       expect(result.success).toBe(true)
       expect(result.geometryCount).toBe(2)
       
-      const features = result.data.features
-      expect(features[0].geometry.coordinates).toEqual([-73.9857, 40.7484])
-      expect(features[1].geometry.coordinates).toEqual([-74.0059, 40.7128])
+      const features = (result.data as FeatureCollection)?.features
+      expect((features?.[0].geometry as Point).coordinates).toEqual([-73.9857, 40.7484])
+      expect((features?.[1].geometry as Point).coordinates).toEqual([-74.0059, 40.7128])
     })
 
     it('should parse mixed separators (comma, space, semicolon)', () => {
@@ -60,7 +61,7 @@ describe('parseLatLngList', () => {
       
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
-      expect(result.data.features[0].geometry.coordinates).toEqual([-73.985700, 40.748400])
+      expect(((result.data as FeatureCollection)?.features[0].geometry as Point).coordinates).toEqual([-73.985700, 40.748400])
     })
 
     it('should parse negative coordinates', () => {
@@ -68,8 +69,8 @@ describe('parseLatLngList', () => {
       
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
-      expect(result.data.features[0].geometry.coordinates).toEqual([73.9857, -40.7484])
-      expect(result.data.features[1].geometry.coordinates).toEqual([74.0059, -40.7128])
+      expect(((result.data as FeatureCollection)?.features[0].geometry as Point).coordinates).toEqual([73.9857, -40.7484])
+      expect(((result.data as FeatureCollection)?.features[1].geometry as Point).coordinates).toEqual([74.0059, -40.7128])
     })
 
     it('should handle coordinates at extremes', () => {
@@ -77,8 +78,8 @@ describe('parseLatLngList', () => {
       
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
-      expect(result.data.features[0].geometry.coordinates).toEqual([180, 90])
-      expect(result.data.features[1].geometry.coordinates).toEqual([-180, -90])
+      expect(((result.data as FeatureCollection)?.features[0].geometry as Point).coordinates).toEqual([180, 90])
+      expect(((result.data as FeatureCollection)?.features[1].geometry as Point).coordinates).toEqual([-180, -90])
     })
 
     it('should parse single coordinate pair', () => {
@@ -87,7 +88,7 @@ describe('parseLatLngList', () => {
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
       expect(result.geometryCount).toBe(1)
-      expect(result.data.features).toHaveLength(1)
+      expect((result.data as FeatureCollection)?.features).toHaveLength(1)
     })
   })
 
@@ -187,13 +188,13 @@ describe('parseLatLngList', () => {
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
       
-      const featureCollection = result.data
+      const featureCollection = result.data as FeatureCollection
       expect(featureCollection).toMatchObject({
         type: 'FeatureCollection',
         features: expect.any(Array)
       })
       
-      featureCollection.features.forEach((feature: { type: string; geometry: { type: string; coordinates: unknown }; properties: { index: number } }, index: number) => {
+      featureCollection?.features?.forEach((feature, index: number) => {
         expect(feature).toMatchObject({
           type: 'Feature',
           geometry: {
@@ -232,10 +233,10 @@ describe('parseLatLngList', () => {
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
       
-      const features = result.data.features
-      expect(features[0].properties.index).toBe(1)
-      expect(features[1].properties.index).toBe(2)
-      expect(features[2].properties.index).toBe(3)
+      const features = (result.data as FeatureCollection)?.features
+      expect(features?.[0]?.properties?.index).toBe(1)
+      expect(features?.[1]?.properties?.index).toBe(2)
+      expect(features?.[2]?.properties?.index).toBe(3)
     })
   })
 
@@ -247,7 +248,7 @@ describe('parseLatLngList', () => {
       expect(result.success).toBe(true)
       
       // Output should be lng,lat for GeoJSON
-      expect(result.data.features[0].geometry.coordinates).toEqual([-73.9857, 40.7484])
+      expect(((result.data as FeatureCollection)?.features[0].geometry as Point).coordinates).toEqual([-73.9857, 40.7484])
     })
 
     it('should handle integer coordinates', () => {
@@ -255,8 +256,8 @@ describe('parseLatLngList', () => {
       
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
-      expect(result.data.features[0].geometry.coordinates).toEqual([-73, 40])
-      expect(result.data.features[1].geometry.coordinates).toEqual([-74, 41])
+      expect(((result.data as FeatureCollection)?.features[0].geometry as Point).coordinates).toEqual([-73, 40])
+      expect(((result.data as FeatureCollection)?.features[1].geometry as Point).coordinates).toEqual([-74, 41])
     })
 
     it('should preserve coordinate precision', () => {
@@ -264,7 +265,7 @@ describe('parseLatLngList', () => {
       
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
-      expect(result.data.features[0].geometry.coordinates).toEqual([-73.987654321, 40.123456789])
+      expect(((result.data as FeatureCollection)?.features[0].geometry as Point).coordinates).toEqual([-73.987654321, 40.123456789])
     })
   })
 
@@ -274,7 +275,7 @@ describe('parseLatLngList', () => {
       
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
-      expect(result.data.features[0].geometry.coordinates).toEqual([-73.9857, 40.7484])
+      expect(((result.data as FeatureCollection)?.features[0].geometry as Point).coordinates).toEqual([-73.9857, 40.7484])
     })
 
     it('should handle scientific notation in coordinates', () => {
@@ -284,8 +285,9 @@ describe('parseLatLngList', () => {
       expect(result.success).toBe(true)
       // The input is interpreted as lat,lng format and converted to lng,lat for GeoJSON
       // 4.07484E1 = 40.7484 (latitude), -7.39857E1 = -73.9857 (longitude)
-      expect(result.data.features[0].geometry.coordinates[0]).toBeCloseTo(-73.9857, 4) // longitude (second number)
-      expect(result.data.features[0].geometry.coordinates[1]).toBeCloseTo(40.7484, 4) // latitude (first number)
+      const coordinates = ((result.data as FeatureCollection)?.features[0].geometry as Point).coordinates
+      expect(coordinates?.[0]).toBeCloseTo(-73.9857, 4) // longitude (second number)
+      expect(coordinates?.[1]).toBeCloseTo(40.7484, 4) // latitude (first number)
     })
 
     it('should handle very small decimal numbers', () => {
@@ -293,7 +295,7 @@ describe('parseLatLngList', () => {
       
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
-      expect(result.data.features[0].geometry.coordinates).toEqual([-0.000001, 0.000001])
+      expect(((result.data as FeatureCollection)?.features[0].geometry as Point).coordinates).toEqual([-0.000001, 0.000001])
     })
 
     it('should handle zero coordinates', () => {
@@ -301,7 +303,7 @@ describe('parseLatLngList', () => {
       
       const result = parseLatLngList(coordList)
       expect(result.success).toBe(true)
-      expect(result.data.features[0].geometry.coordinates).toEqual([0, 0])
+      expect(((result.data as FeatureCollection)?.features[0].geometry as Point).coordinates).toEqual([0, 0])
     })
   })
 })

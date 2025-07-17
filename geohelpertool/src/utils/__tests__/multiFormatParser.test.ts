@@ -18,7 +18,7 @@ describe("parseMultiFormat", () => {
       const result = parseMultiFormat(geoJsonString);
       expect(result.success).toBe(true);
       expect(result.format).toBe(LayerType.GEOJSON);
-      expect(result.data.type).toBe("Feature");
+      expect(result.data?.type).toBe("Feature");
     });
 
     it("should detect and parse lat/lng coordinate list", () => {
@@ -27,7 +27,7 @@ describe("parseMultiFormat", () => {
       const result = parseMultiFormat(coordList);
       expect(result.success).toBe(true);
       expect(result.format).toBe(LayerType.COORDINATES);
-      expect(result.data.type).toBe("FeatureCollection");
+      expect(result.data?.type).toBe("FeatureCollection");
       expect(result.geometryCount).toBe(2);
     });
 
@@ -37,7 +37,7 @@ describe("parseMultiFormat", () => {
       const result = parseMultiFormat(wktString);
       expect(result.success).toBe(true);
       expect(result.format).toBe(LayerType.WKT);
-      expect(result.data.geometry.type).toBe("Point");
+      expect((result.data as { geometry?: { type?: string } })?.geometry?.type).toBe("Point");
     });
 
     it("should detect and parse encoded polyline", () => {
@@ -46,7 +46,7 @@ describe("parseMultiFormat", () => {
       const result = parseMultiFormat(polylineString);
       expect(result.success).toBe(true);
       expect(result.format).toBe(LayerType.POLYLINE);
-      expect(result.data.geometry.type).toBe("LineString");
+      expect((result.data as { geometry?: { type?: string } })?.geometry?.type).toBe("LineString");
     });
   });
 

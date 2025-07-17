@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseWKT, ERROR_CODES } from '../geoJsonParser'
 import { LayerType } from '../../types/layer'
+import type { Feature, Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon } from 'geojson'
 
 describe('parseWKT', () => {
   describe('valid WKT parsing', () => {
@@ -13,11 +14,11 @@ describe('parseWKT', () => {
       expect(result.type).toBe('Feature')
       expect(result.geometryCount).toBe(1)
       
-      const feature = result.data
-      expect(feature.type).toBe('Feature')
-      expect(feature.geometry.type).toBe('Point')
-      expect(feature.geometry.coordinates).toEqual([-73.9857, 40.7484])
-      expect(feature.properties).toEqual({})
+      const feature = result.data as Feature
+      expect(feature?.type).toBe('Feature')
+      expect(feature?.geometry?.type).toBe('Point')
+      expect((feature?.geometry as Point)?.coordinates).toEqual([-73.9857, 40.7484])
+      expect(feature?.properties).toEqual({})
     })
 
     it('should parse a LINESTRING WKT', () => {
@@ -25,8 +26,8 @@ describe('parseWKT', () => {
       
       const result = parseWKT(lineStringWKT)
       expect(result.success).toBe(true)
-      expect(result.data.geometry.type).toBe('LineString')
-      expect(result.data.geometry.coordinates).toEqual([
+      expect((result.data as Feature)?.geometry?.type).toBe('LineString')
+      expect(((result.data as Feature)?.geometry as LineString)?.coordinates).toEqual([
         [-73.9857, 40.7484],
         [-74.0059, 40.7128],
         [-74.0060, 40.7130]
@@ -38,8 +39,8 @@ describe('parseWKT', () => {
       
       const result = parseWKT(polygonWKT)
       expect(result.success).toBe(true)
-      expect(result.data.geometry.type).toBe('Polygon')
-      expect(result.data.geometry.coordinates).toEqual([[
+      expect((result.data as Feature)?.geometry?.type).toBe('Polygon')
+      expect(((result.data as Feature)?.geometry as Polygon)?.coordinates).toEqual([[
         [-73.9857, 40.7484],
         [-74.0059, 40.7128],
         [-74.0060, 40.7130],
@@ -52,8 +53,8 @@ describe('parseWKT', () => {
       
       const result = parseWKT(multiPointWKT)
       expect(result.success).toBe(true)
-      expect(result.data.geometry.type).toBe('MultiPoint')
-      expect(result.data.geometry.coordinates).toEqual([
+      expect((result.data as Feature)?.geometry?.type).toBe('MultiPoint')
+      expect(((result.data as Feature)?.geometry as MultiPoint)?.coordinates).toEqual([
         [-73.9857, 40.7484],
         [-74.0059, 40.7128]
       ])
@@ -64,8 +65,8 @@ describe('parseWKT', () => {
       
       const result = parseWKT(multiLineStringWKT)
       expect(result.success).toBe(true)
-      expect(result.data.geometry.type).toBe('MultiLineString')
-      expect(result.data.geometry.coordinates).toEqual([
+      expect((result.data as Feature)?.geometry?.type).toBe('MultiLineString')
+      expect(((result.data as Feature)?.geometry as MultiLineString)?.coordinates).toEqual([
         [[-73.9857, 40.7484], [-74.0059, 40.7128]],
         [[-74.0060, 40.7130], [-74.0061, 40.7131]]
       ])
@@ -76,8 +77,8 @@ describe('parseWKT', () => {
       
       const result = parseWKT(multiPolygonWKT)
       expect(result.success).toBe(true)
-      expect(result.data.geometry.type).toBe('MultiPolygon')
-      expect(result.data.geometry.coordinates).toEqual([[[
+      expect((result.data as Feature)?.geometry?.type).toBe('MultiPolygon')
+      expect(((result.data as Feature)?.geometry as MultiPolygon)?.coordinates).toEqual([[[
         [-73.9857, 40.7484],
         [-74.0059, 40.7128],
         [-74.0060, 40.7130],
@@ -90,7 +91,7 @@ describe('parseWKT', () => {
       
       const result = parseWKT(lowercasePointWKT)
       expect(result.success).toBe(true)
-      expect(result.data.geometry.type).toBe('Point')
+      expect((result.data as Feature)?.geometry?.type).toBe('Point')
     })
 
     it('should handle extra whitespace', () => {
@@ -99,7 +100,7 @@ describe('parseWKT', () => {
       const result = parseWKT(pointWithSpaces)
       // The WKT library may not handle extra whitespace properly
       if (result.success) {
-        expect(result.data.geometry.coordinates).toEqual([-73.9857, 40.7484])
+        expect(((result.data as Feature)?.geometry as Point)?.coordinates).toEqual([-73.9857, 40.7484])
       } else {
         expect(result.errorCode).toBe(ERROR_CODES.WKT_ERROR)
       }
@@ -154,7 +155,7 @@ describe('parseWKT', () => {
       // Some validation libraries may be more lenient with coordinate ranges
       if (result.success) {
         // If it succeeds, at least verify it parsed as a Point
-        expect(result.data.geometry.type).toBe('Point')
+        expect((result.data as Feature)?.geometry?.type).toBe('Point')
       } else {
         expect(result.errorCode).toBe(ERROR_CODES.WKT_ERROR)
       }
@@ -176,7 +177,7 @@ describe('parseWKT', () => {
       const result = parseWKT(pointWKT)
       expect(result.success).toBe(true)
       
-      const feature = result.data
+      const feature = result.data as Feature
       expect(feature).toMatchObject({
         type: 'Feature',
         geometry: {
@@ -236,7 +237,7 @@ describe('parseWKT', () => {
       const result = parseWKT(emptyPoint)
       // This might succeed or fail depending on how the WKT library handles EMPTY geometries
       if (result.success) {
-        expect(result.data.geometry.type).toBe('Point')
+        expect((result.data as Feature)?.geometry?.type).toBe('Point')
       } else {
         expect(result.errorCode).toBe(ERROR_CODES.WKT_ERROR)
       }
@@ -247,8 +248,8 @@ describe('parseWKT', () => {
       
       const result = parseWKT(scientificPoint)
       if (result.success) {
-        expect(result.data.geometry.coordinates[0]).toBeCloseTo(-73.9857, 4)
-        expect(result.data.geometry.coordinates[1]).toBeCloseTo(40.7484, 4)
+        expect(((result.data as Feature)?.geometry as Point)?.coordinates?.[0]).toBeCloseTo(-73.9857, 4)
+        expect(((result.data as Feature)?.geometry as Point)?.coordinates?.[1]).toBeCloseTo(40.7484, 4)
       }
     })
 
@@ -257,7 +258,7 @@ describe('parseWKT', () => {
       
       const result = parseWKT(precisePoint)
       expect(result.success).toBe(true)
-      expect(result.data.geometry.coordinates).toEqual([-73.9857, 40.7484])
+      expect(((result.data as Feature)?.geometry as Point)?.coordinates).toEqual([-73.9857, 40.7484])
     })
   })
 })

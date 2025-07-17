@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parsePolyline, ERROR_CODES } from "../geoJsonParser";
 import { LayerType } from "../../types/layer";
-import { decode } from "@mapbox/polyline";
+import type { Feature, LineString } from "geojson";
 
 describe("parsePolyline", () => {
   describe("valid polyline parsing", () => {
@@ -15,14 +15,14 @@ describe("parsePolyline", () => {
       expect(result.type).toBe("Feature");
       expect(result.geometryCount).toBe(1);
 
-      const feature = result.data;
-      expect(feature.type).toBe("Feature");
-      expect(feature.geometry.type).toBe("LineString");
-      expect(Array.isArray(feature.geometry.coordinates)).toBe(true);
-      expect(feature.geometry.coordinates.length).toBeGreaterThan(0);
+      const feature = result.data as Feature<LineString>;
+      expect(feature?.type).toBe("Feature");
+      expect(feature?.geometry?.type).toBe("LineString");
+      expect(Array.isArray(feature?.geometry?.coordinates)).toBe(true);
+      expect(feature?.geometry?.coordinates?.length).toBeGreaterThan(0);
 
       // Check that coordinates are in [lng, lat] format (GeoJSON standard)
-      const firstCoord = feature.geometry.coordinates[0];
+      const firstCoord = feature?.geometry?.coordinates?.[0];
       expect(firstCoord).toHaveLength(2);
       expect(typeof firstCoord[0]).toBe("number"); // longitude
       expect(typeof firstCoord[1]).toBe("number"); // latitude
@@ -33,7 +33,7 @@ describe("parsePolyline", () => {
 
       const result = parsePolyline(polylineWithBackslashes);
       expect(result.success).toBe(true);
-      expect(result.data.geometry.coordinates.length).toBeGreaterThan(0);
+      expect((result.data as Feature<LineString>)?.geometry?.coordinates?.length).toBeGreaterThan(0);
     });
 
     it("should respect unescape option when set to false", () => {
@@ -57,8 +57,8 @@ describe("parsePolyline", () => {
       expect(result.success).toBe(true);
 
       // Check all coordinates are within valid ranges
-      const coordinates = result.data.geometry.coordinates;
-      coordinates.forEach((coord: number[]) => {
+      const coordinates = (result.data as Feature<LineString>)?.geometry?.coordinates;
+      coordinates?.forEach((coord: number[]) => {
         const [lng, lat] = coord;
         expect(lng).toBeGreaterThanOrEqual(-180);
         expect(lng).toBeLessThanOrEqual(180);
@@ -103,8 +103,8 @@ describe("parsePolyline", () => {
         expect(result.errorCode).toBe(ERROR_CODES.POLYLINE_ERROR);
       } else {
         // If it succeeds, coordinates should still be valid
-        const coordinates = result.data.geometry.coordinates;
-        coordinates.forEach((coord: number[]) => {
+        const coordinates = (result.data as Feature<LineString>)?.geometry?.coordinates;
+        coordinates?.forEach((coord: number[]) => {
           const [lng, lat] = coord;
           expect(lng).toBeGreaterThanOrEqual(-180);
           expect(lng).toBeLessThanOrEqual(180);
@@ -122,7 +122,7 @@ describe("parsePolyline", () => {
       const result = parsePolyline(polylineString);
       expect(result.success).toBe(true);
 
-      const feature = result.data;
+      const feature = result.data as Feature<LineString>;
       expect(feature).toMatchObject({
         type: "Feature",
         geometry: {
@@ -168,8 +168,8 @@ describe("parsePolyline", () => {
       // Both should succeed and produce the same result
       expect(escapedResult.success).toBe(true);
       expect(unescapedResult.success).toBe(true);
-      expect(escapedResult.data.geometry.coordinates).toEqual(
-        unescapedResult.data.geometry.coordinates
+      expect((escapedResult.data as Feature<LineString>)?.geometry?.coordinates).toEqual(
+        (unescapedResult.data as Feature<LineString>)?.geometry?.coordinates
       );
     });
 
@@ -192,8 +192,8 @@ describe("parsePolyline", () => {
 
       expect(resultWithDefaults.success).toBe(resultWithExplicitTrue.success);
       if (resultWithDefaults.success && resultWithExplicitTrue.success) {
-        expect(resultWithDefaults.data.geometry.coordinates).toEqual(
-          resultWithExplicitTrue.data.geometry.coordinates
+        expect((resultWithDefaults.data as Feature<LineString>)?.geometry?.coordinates).toEqual(
+          (resultWithExplicitTrue.data as Feature<LineString>)?.geometry?.coordinates
         );
       }
     });
