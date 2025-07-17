@@ -352,6 +352,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
         if (map) {
           layerManagerRef.current?.cleanup();
         }
+        setIsMapReady(false);
       };
     }
 
@@ -383,6 +384,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       clearInterval(interval);
       clearTimeout(timeout);
       layerManagerRef.current?.cleanup();
+      setIsMapReady(false);
     };
   }, []);
 
@@ -391,15 +393,25 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     const layerManager = layerManagerRef.current;
     const map = mapRef.current?.getMap();
     
+    console.log('Layer sync effect triggered:', {
+      layersCount: state.layers.length,
+      isMapReady,
+      hasLayerManager: !!layerManager,
+      hasMap: !!map
+    });
+    
     if (!layerManager && !map) {
+      console.log('No layer manager or map available, skipping sync');
       return;
     }
 
     if (!layerManager && map) {
       // Fallback: sync using direct map operations
+      console.log('Using fallback direct map operations for', state.layers.length, 'layers');
       state.layers.forEach(layer => {
         const sourceId = `layer-source-${layer.id}`;
         if (!map.getSource(sourceId)) {
+          console.log('Adding layer via fallback:', layer.id);
           addMapLayer(layer);
         }
       });
@@ -407,8 +419,10 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     }
 
     // Add new layers
+    console.log('Using layer manager to sync', state.layers.length, 'layers');
     state.layers.forEach(layer => {
       if (!layerManager!.hasSource(layer.id)) {
+        console.log('Adding layer via layer manager:', layer.id);
         addMapLayer(layer);
       }
     });
