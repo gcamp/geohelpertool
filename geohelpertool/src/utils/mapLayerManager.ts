@@ -13,8 +13,8 @@ export interface MapLayerConfig {
   sourceId: string;
   type: 'circle' | 'line' | 'fill';
   geometryType: 'Point' | 'LineString' | 'Polygon' | 'MultiPolygon';
-  paint: Record<string, any>;
-  layout: Record<string, any>;
+  paint: Record<string, unknown>;
+  layout: Record<string, unknown>;
   filter?: ['==', '$type', string];
 }
 

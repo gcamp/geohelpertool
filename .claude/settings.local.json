@@ -18,7 +18,8 @@
       "Bash(node:*)",
       "Bash(rm:*)",
       "Bash(git add:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm test:*)"
     ],
     "deny": []
   }

@@ -1,28 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import Notification, { type NotificationData } from './Notification';
+import { NotificationContext, type NotificationContextType } from '../contexts/NotificationContext';
 import './Notification.css';
 
 interface NotificationContainerProps {
   children: React.ReactNode;
 }
-
-export interface NotificationContextType {
-  showNotification: (notification: Omit<NotificationData, 'id'>) => void;
-  showSuccess: (title: string, message?: string) => void;
-  showError: (title: string, message?: string) => void;
-  showWarning: (title: string, message?: string) => void;
-  showInfo: (title: string, message?: string) => void;
-}
-
-export const NotificationContext = React.createContext<NotificationContextType | undefined>(undefined);
-
-export const useNotification = (): NotificationContextType => {
-  const context = React.useContext(NotificationContext);
-  if (!context) {
-    throw new Error('useNotification must be used within a NotificationProvider');
-  }
-  return context;
-};
 
 const NotificationContainer: React.FC<NotificationContainerProps> = ({ children }) => {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);

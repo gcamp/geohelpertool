@@ -1,4 +1,4 @@
-// @ts-ignore - Used in type annotations
+// @ts-expect-error - Used in type annotations
 import type { GeoJSON } from 'geojson';
 
 export const LayerType = {

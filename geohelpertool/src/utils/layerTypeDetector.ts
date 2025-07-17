@@ -1,12 +1,12 @@
-import { parseMultiFormat } from './geoJsonParser';
+import { parseMultiFormat, type ParseResult } from './geoJsonParser';
 import { LayerType } from '../types/layer';
 import type { LayerType as LayerTypeEnum } from '../types/layer';
 
 export interface LayerDetectionResult {
   layerType: LayerTypeEnum;
-  layerOptions: Record<string, any>;
-  parseOptions?: Record<string, any>;
-  parseResult: any;
+  layerOptions: Record<string, unknown>;
+  parseOptions?: Record<string, unknown>;
+  parseResult: ParseResult;
 }
 
 export function detectAndParseLayer(content: string): LayerDetectionResult {

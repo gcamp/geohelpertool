@@ -3,7 +3,7 @@ import { LayerType, ColorPalette } from '../types/layer';
 import type { Layer, LayerOptions, LayerState } from '../types/layer';
 import { layerReducer, initialLayerState, layerManagement } from '../utils/layerManagement';
 import { saveLayersToStorage, loadLayersFromStorage, clearLayersFromStorage } from '../utils/localStorage';
-// @ts-ignore - Used in type annotations
+// @ts-expect-error - Used in type annotations
 import type { GeoJSON } from 'geojson';
 
 /**

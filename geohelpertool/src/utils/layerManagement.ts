@@ -1,7 +1,7 @@
 import { LayerType, ColorPalette } from '../types/layer';
 import type { Layer, LayerState, LayerAction, LayerOptions } from '../types/layer';
 import { generateUniqueLayerId, getNextColor, generateLayerName } from './layerUtils';
-// @ts-ignore - Used in type annotations
+// @ts-expect-error - Used in type annotations
 import type { GeoJSON } from 'geojson';
 
 /**

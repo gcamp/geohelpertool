@@ -11,7 +11,7 @@ type LayerContextType = UseLayerStateReturn;
 /**
  * Layer context
  */
-export const LayerContext = createContext<LayerContextType | undefined>(undefined);
+const LayerContext = createContext<LayerContextType | undefined>(undefined);
 
 /**
  * Layer provider props
@@ -23,7 +23,7 @@ interface LayerProviderProps {
 /**
  * Layer provider component
  */
-export const LayerProvider: React.FC<LayerProviderProps> = ({ children }) => {
+const LayerProvider: React.FC<LayerProviderProps> = ({ children }) => {
   const layerState = useLayerState();
 
   return (
@@ -32,3 +32,5 @@ export const LayerProvider: React.FC<LayerProviderProps> = ({ children }) => {
     </LayerContext.Provider>
   );
 };
+
+export { LayerContext, LayerProvider };

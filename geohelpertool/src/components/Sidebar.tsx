@@ -4,8 +4,8 @@ import { useLayerContext } from '../hooks/useLayerContextHook';
 import { parseMultiFormat } from '../utils/geoJsonParser';
 import { detectAndParseLayer } from '../utils/layerTypeDetector';
 import { LayerType, ColorPalette } from '../types/layer';
-import { useNotification } from './NotificationContainer';
-// @ts-ignore - Used in type annotations
+import { useNotification } from '../contexts/NotificationContext';
+// @ts-expect-error - Used in type annotations
 import type { GeoJSON } from 'geojson';
 
 interface SidebarProps {
@@ -83,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
-  }, [isResizing]);
+  }, [isResizing, onWidthChange]);
 
 
   const handleDragEnter = (event: React.DragEvent) => {

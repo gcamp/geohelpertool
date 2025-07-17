@@ -1,6 +1,6 @@
 import type { GeoJSON, FeatureCollection, Feature, Geometry } from 'geojson';
 import { LayerType } from '../types/layer';
-// @ts-ignore - No types available for geojson-validation
+// @ts-expect-error - No types available for geojson-validation
 import { valid } from 'geojson-validation';
 import { booleanValid } from '@turf/boolean-valid';
 import * as polyline from '@mapbox/polyline';
@@ -28,7 +28,7 @@ export interface StyleProperties {
   color?: string;
   weight?: number;
   opacity?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export const ERROR_CODES = {
@@ -79,13 +79,13 @@ function getGeometryErrorSuggestion(geometryType: string): string {
   }
 }
 
-function isGeometryObject(obj: any): boolean {
+function isGeometryObject(obj: unknown): obj is { type: string; coordinates?: unknown; geometries?: unknown } {
   const geometryTypes = ['Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon', 'GeometryCollection'];
-  return obj && typeof obj === 'object' && geometryTypes.indexOf(obj.type) !== -1 && 
-         (obj.coordinates || obj.type === 'GeometryCollection');
+  return obj !== null && typeof obj === 'object' && 'type' in obj && geometryTypes.indexOf((obj as any).type) !== -1 && 
+         ('coordinates' in obj || (obj as any).type === 'GeometryCollection');
 }
 
-export function extractStyleProperties(properties: any): StyleProperties {
+export function extractStyleProperties(properties: Record<string, unknown>): StyleProperties {
   if (!properties || typeof properties !== 'object') {
     return {};
   }
@@ -93,34 +93,32 @@ export function extractStyleProperties(properties: any): StyleProperties {
   const style: StyleProperties = {};
 
   // Standard GeoJSON styling properties
-  if (properties.stroke) style.stroke = properties.stroke;
-  if (properties['stroke-width']) style.strokeWidth = properties['stroke-width'];
-  if (properties['stroke-opacity']) style.strokeOpacity = properties['stroke-opacity'];
-  if (properties.fill) style.fill = properties.fill;
-  if (properties['fill-opacity']) style.fillOpacity = properties['fill-opacity'];
+  if (typeof properties.stroke === 'string') style.stroke = properties.stroke;
+  if (typeof properties['stroke-width'] === 'number') style.strokeWidth = properties['stroke-width'];
+  if (typeof properties['stroke-opacity'] === 'number') style.strokeOpacity = properties['stroke-opacity'];
+  if (typeof properties.fill === 'string') style.fill = properties.fill;
+  if (typeof properties['fill-opacity'] === 'number') style.fillOpacity = properties['fill-opacity'];
 
   // Mapbox/Leaflet style properties
-  if (properties.color) style.color = properties.color;
-  if (properties.weight) style.weight = properties.weight;
-  if (properties.opacity) style.opacity = properties.opacity;
-  if (properties.fillColor) style.fill = properties.fillColor;
-  if (properties.fillOpacity) style.fillOpacity = properties.fillOpacity;
+  if (typeof properties.color === 'string') style.color = properties.color;
+  if (typeof properties.weight === 'number') style.weight = properties.weight;
+  if (typeof properties.opacity === 'number') style.opacity = properties.opacity;
+  if (typeof properties.fillColor === 'string') style.fill = properties.fillColor;
+  if (typeof properties.fillOpacity === 'number') style.fillOpacity = properties.fillOpacity;
 
   // Alternative naming conventions
-  if (properties.strokeColor) style.stroke = properties.strokeColor;
-  if (properties.strokeWeight) style.strokeWidth = properties.strokeWeight;
-  if (properties.lineColor) style.stroke = properties.lineColor;
-  if (properties.lineWidth) style.strokeWidth = properties.lineWidth;
+  if (typeof properties.strokeColor === 'string') style.stroke = properties.strokeColor;
+  if (typeof properties.strokeWeight === 'number') style.strokeWidth = properties.strokeWeight;
+  if (typeof properties.lineColor === 'string') style.stroke = properties.lineColor;
+  if (typeof properties.lineWidth === 'number') style.strokeWidth = properties.lineWidth;
 
   // Normalize common patterns
-  if (properties.style) {
-    const styleObj = properties.style;
-    if (typeof styleObj === 'object') {
-      const nestedStyle = extractStyleProperties(styleObj);
-      for (const key in nestedStyle) {
-        if (nestedStyle.hasOwnProperty(key)) {
-          style[key] = nestedStyle[key];
-        }
+  if (properties.style && typeof properties.style === 'object') {
+    const styleObj = properties.style as Record<string, unknown>;
+    const nestedStyle = extractStyleProperties(styleObj);
+    for (const key in nestedStyle) {
+      if (Object.prototype.hasOwnProperty.call(nestedStyle, key)) {
+        style[key as keyof StyleProperties] = nestedStyle[key as keyof StyleProperties];
       }
     }
   }
@@ -160,13 +158,23 @@ function extractAllStyleProperties(geoJson: GeoJSON): StyleProperties[] {
 
 export function parsePolyline(input: string, options: { unescape?: boolean; } = { unescape: true }): ParseResult {
   try {
-    var cleanInput = input.trim();
+    const cleanInput = input.trim();
     
     if (!cleanInput) {
       return createErrorResult(
         'Empty polyline string',
         ERROR_CODES.POLYLINE_ERROR,
         'Polyline string cannot be empty'
+      );
+    }
+
+    // Reject inputs that look like coordinate lists (comma/space separated numbers)
+    // Polylines should be encoded strings, not raw coordinates
+    if (/^[\d\s,.-]+$/.test(cleanInput)) {
+      return createErrorResult(
+        'Input appears to be coordinate list, not encoded polyline',
+        ERROR_CODES.POLYLINE_ERROR,
+        'Polyline strings should be encoded, not raw coordinates'
       );
     }
 
@@ -306,8 +314,8 @@ export function parseLatLngList(input: string): ParseResult {
       );
     }
 
-    // Extract all numbers from the input
-    const numbers = cleanInput.match(/-?\d+\.?\d*/g);
+    // Extract all numbers from the input (including scientific notation)
+    const numbers = cleanInput.match(/-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g);
     if (!numbers || numbers.length === 0) {
       return createErrorResult(
         'No valid numbers found',
@@ -413,12 +421,12 @@ export function parseMultiFormat(input: string, options?: { unescape?: boolean }
       );
     }
 
-    // Try parsing with each format in order of likelihood until one succeeds
+    // Try parsing with each format in order of specificity (most specific first)
     const formats = [
       { name: 'GeoJSON', parser: () => parseGeoJSON(cleanInput) },
-      { name: 'Lat/Lng List', parser: () => parseLatLngList(cleanInput) },
       { name: 'WKT', parser: () => parseWKT(cleanInput) },
       { name: 'Polyline', parser: () => parsePolyline(cleanInput, { unescape: options?.unescape }) },
+      { name: 'Lat/Lng List', parser: () => parseLatLngList(cleanInput) },
     ];
     
     const errors: string[] = [];
@@ -448,7 +456,7 @@ export function parseMultiFormat(input: string, options?: { unescape?: boolean }
 export function parsePartialGeoJSON(input: string | object): ParseResult {
   try {
     // Parse JSON if input is a string
-    let parsedData: any;
+    let parsedData: unknown;
     if (typeof input === 'string') {
       try {
         parsedData = JSON.parse(input);
@@ -524,7 +532,7 @@ export function parsePartialGeoJSON(input: string | object): ParseResult {
 export function parseGeoJSON(input: string | object): ParseResult {
   try {
     // Parse JSON if input is a string
-    let parsedData: any;
+    let parsedData: unknown;
     if (typeof input === 'string') {
       try {
         parsedData = JSON.parse(input);
@@ -540,7 +548,7 @@ export function parseGeoJSON(input: string | object): ParseResult {
     }
 
     // Basic GeoJSON structure validation (more lenient)
-    const isValidGeoJSON = (data: any): boolean => {
+    const isValidGeoJSON = (data: unknown): boolean => {
       if (!data || typeof data !== 'object') return false;
       
       const validTypes = ['Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon', 'GeometryCollection', 'Feature', 'FeatureCollection'];

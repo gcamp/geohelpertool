@@ -1,13 +1,13 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useCallback } from 'react';
 import Map, { NavigationControl, ScaleControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './MapComponent.css';
 import { useLayerContext } from '../hooks/useLayerContextHook';
 import { detectAndParseLayer } from '../utils/layerTypeDetector';
-import { useNotification } from './NotificationContainer';
+import { useNotification } from '../contexts/NotificationContext';
 import { MapLayerManager } from '../utils/mapLayerManager';
 import bbox from '@turf/bbox';
-// @ts-ignore - Used in type annotations
+// @ts-expect-error - Used in type annotations
 import type { GeoJSON } from 'geojson';
 import type { MapRef } from 'react-map-gl/maplibre';
 import type { Layer } from '../types/layer';
@@ -42,7 +42,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
   const { state, actions } = useLayerContext();
   const { showSuccess, showError } = useNotification();
 
-  const fitMapToLayers = () => {
+  const fitMapToLayers = useCallback(() => {
     const map = mapRef.current?.getMap();
     if (!map || state.layers.length === 0) return;
 
@@ -99,7 +99,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       console.error('Error fitting map to layers:', error);
       showError('Error fitting map to layers', `${error}`);
     }
-  };
+  }, [state.layers, sidebarVisible, sidebarWidth, showError]);
 
   // Expose the fitMapToLayers function to parent components
   useImperativeHandle(ref, () => ({
@@ -126,7 +126,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     }
   };
 
-  const addMapLayer = (layer: Layer) => {
+  const addMapLayer = useCallback((layer: Layer) => {
     const layerManager = layerManagerRef.current;
     const map = mapRef.current?.getMap();
     
@@ -148,7 +148,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     } catch (error) {
       console.error('Error adding layer to map:', error);
     }
-  };
+  }, []);
 
   const addMapLayerFallback = (layer: Layer) => {
     const map = mapRef.current?.getMap();
@@ -273,7 +273,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     }
   };
 
-  const updateLayerVisibility = (layerId: string, visible: boolean) => {
+  const updateLayerVisibility = useCallback((layerId: string, visible: boolean) => {
     const layerManager = layerManagerRef.current;
     if (!layerManager) return;
 
@@ -282,7 +282,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     } catch (error) {
       console.error('Error updating layer visibility:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const handlePaste = (event: ClipboardEvent) => {
@@ -321,7 +321,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     return () => {
       document.removeEventListener('paste', handlePaste);
     };
-  }, [actions]);
+  }, [actions, showError, showSuccess]);
 
   // Effect to initialize layer manager when map is loaded
   useEffect(() => {
@@ -347,8 +347,9 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
 
     // Try immediately
     if (checkAndInitMap()) {
+      const currentMap = mapRef.current;
       return () => {
-        const map = mapRef.current?.getMap();
+        const map = currentMap?.getMap();
         if (map) {
           layerManagerRef.current?.cleanup();
         }
@@ -434,7 +435,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
         removeMapLayer(sourceId);
       }
     });
-  }, [state.layers, isMapReady]);
+  }, [state.layers, isMapReady, addMapLayer]);
 
   // Effect to sync layer visibility
   useEffect(() => {
@@ -443,7 +444,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     state.layers.forEach(layer => {
       updateLayerVisibility(layer.id, layer.visibility);
     });
-  }, [state.layers.map(layer => `${layer.id}-${layer.visibility}`).join(','), isMapReady]);
+  }, [state.layers, isMapReady, updateLayerVisibility]);
 
   // Effect to sync layer colors and styles
   useEffect(() => {
@@ -455,7 +456,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
         layerManager.updateLayerStyle(layer.id, layer);
       }
     });
-  }, [state.layers.map(layer => `${layer.id}-${layer.color}-${JSON.stringify(layer.options)}`).join(','), isMapReady]);
+  }, [state.layers, isMapReady]);
 
   // Effect to update layer data when it changes
   useEffect(() => {
@@ -467,7 +468,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
         layerManager.updateSource(layer.id, layer.data);
       }
     });
-  }, [state.layers.map(layer => `${layer.id}-${JSON.stringify(layer.data)}`).join(','), isMapReady]);
+  }, [state.layers, isMapReady]);
 
   // Effect to fit map to layers when layers are added
   useEffect(() => {
@@ -479,7 +480,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       
       return () => clearTimeout(timer);
     }
-  }, [state.layers.length]); // Only trigger when layer count changes
+  }, [state.layers.length, fitMapToLayers]); // Only trigger when layer count changes
 
   return (
     <div ref={containerRef} className="map-container">
