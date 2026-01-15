@@ -156,9 +156,10 @@ describe("parsePolyline", () => {
   describe("unescape functionality", () => {
     it("should unescape backslashes when unescape is true", () => {
       // Create a test case where unescaping makes a difference
+      // The escaped version has backslash-escaped characters (e.g., \{ )
       const escapedPolyline = "u\\{~vFvyys@fS]";
-      // prettier-ignore
-      const unescapedPolyline = decodeURI(escapedPolyline);
+      // The unescaped version is what it should become after removing backslash escapes
+      const unescapedPolyline = "u{~vFvyys@fS]";
 
       const escapedResult = parsePolyline(escapedPolyline, { unescape: true });
       const unescapedResult = parsePolyline(unescapedPolyline, {
