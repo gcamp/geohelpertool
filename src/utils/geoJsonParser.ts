@@ -209,8 +209,10 @@ export function parsePolyline(
       );
     }
 
-    if (options.unescape) {
-      cleanInput = decodeURI(cleanInput);
+    if (options.unescape !== false) {
+      // Remove backslash escapes (e.g., \{ becomes {, \\ becomes \)
+      // Default to true when unescape is undefined
+      cleanInput = cleanInput.replace(/\\(.)/g, '$1');
     }
 
     // Decode the polyline

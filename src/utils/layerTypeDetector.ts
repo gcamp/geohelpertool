@@ -10,14 +10,19 @@ export interface LayerDetectionResult {
 }
 
 export function detectAndParseLayer(content: string): LayerDetectionResult {
-  const layerOptions = {};
-  
+  const layerOptions: Record<string, unknown> = {};
+
   const parseOptions = undefined;
   const parseResult = parseMultiFormat(content, parseOptions);
-  
+
   // Use the format from the parse result, or default to GEOJSON
   const layerType: LayerTypeEnum = parseResult.format || LayerType.GEOJSON;
-  
+
+  // Set default options based on layer type to match parsing defaults
+  if (layerType === LayerType.POLYLINE) {
+    layerOptions.unescape = true; // parsePolyline defaults to unescape: true
+  }
+
   return {
     layerType,
     layerOptions,
