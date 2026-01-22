@@ -1,5 +1,5 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useCallback } from 'react';
-import Map, { NavigationControl, ScaleControl } from 'react-map-gl/maplibre';
+import MapGL, { NavigationControl, ScaleControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './MapComponent.css';
 import { useLayerContext } from '../hooks/useLayerContextHook';
@@ -42,6 +42,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
   const [isMapReady, setIsMapReady] = useState(false);
   const { state, actions } = useLayerContext();
   const { showSuccess, showError } = useNotification();
+  const lastProgressValuesRef = useRef(new Map<string, number>());
 
   const fitMapToLayers = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -484,6 +485,12 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       if (!hasLineString) return;
 
       const progress = layer.options.progressSlider ?? 100;
+      const lastProgress = lastProgressValuesRef.current.get(layer.id);
+
+      // Only update if progress value changed
+      if (lastProgress === progress) return;
+
+      lastProgressValuesRef.current.set(layer.id, progress);
 
       if (progress < 100) {
         // Clip the geometry
@@ -514,7 +521,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
 
   return (
     <div ref={containerRef} className="map-container">
-      <Map
+      <MapGL
         ref={mapRef}
         initialViewState={initialViewState}
         style={{ width: '100%', height: '100%' }}
@@ -522,7 +529,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       >
         <NavigationControl position="top-right" style={{ zIndex: 1000 }} />
         <ScaleControl position="bottom-left" />
-      </Map>
+      </MapGL>
     </div>
   );
 });

@@ -26,6 +26,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [colorDropdownOpen, setColorDropdownOpen] = useState<string | null>(null);
+  const [localSliderValues, setLocalSliderValues] = useState<Map<string, number>>(new Map());
+  const sliderTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const convertToFeatureCollection = (geoJson: GeoJSON.GeoJSON): GeoJSON.FeatureCollection => {
     if (geoJson.type === 'FeatureCollection') {
@@ -211,7 +213,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
   };
 
   const handleProgressSliderChange = (layerId: string, value: number) => {
-    actions.updateOptions(layerId, { progressSlider: value });
+    // Update local state immediately for responsive UI
+    setLocalSliderValues(prev => {
+      const next = new Map(prev);
+      next.set(layerId, value);
+      return next;
+    });
+
+    // Clear existing timeout for this layer
+    const existingTimeout = sliderTimeoutRef.current.get(layerId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Debounce the actual state update
+    const timeout = setTimeout(() => {
+      actions.updateOptions(layerId, { progressSlider: value });
+      sliderTimeoutRef.current.delete(layerId);
+    }, 150); // 150ms debounce
+
+    sliderTimeoutRef.current.set(layerId, timeout);
   };
 
   // Close color dropdown when clicking outside
@@ -224,6 +245,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [colorDropdownOpen]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      sliderTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
+      sliderTimeoutRef.current.clear();
+    };
+  }, []);
 
 
   return (
@@ -524,7 +553,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                         <div className="option-item slider-option">
                           <label className="option-label">
                             <span className="option-text">
-                              Show Path Progress: {layer.options.progressSlider ?? 100}%
+                              Show Path Progress: {localSliderValues.get(layer.id) ?? layer.options.progressSlider ?? 100}%
                             </span>
                           </label>
                           <div className="slider-container">
@@ -532,7 +561,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                               type="range"
                               min="0"
                               max="100"
-                              value={layer.options.progressSlider ?? 100}
+                              value={localSliderValues.get(layer.id) ?? layer.options.progressSlider ?? 100}
                               onChange={(e) => handleProgressSliderChange(layer.id, parseInt(e.target.value))}
                               disabled={!layer.visibility}
                               className="progress-slider"
