@@ -338,9 +338,19 @@ export class MapLayerManager {
           geometryType: 'LineString',
           filter: ['==', '$type', 'LineString'],
           paint: {
-            'line-color': useGeoJsonStyles
-              ? ['case', ['has', 'stroke'], ['get', 'stroke'], ['has', 'stroke-color'], ['get', 'stroke-color'], getMapLayerColor(layer.color)]
-              : getMapLayerColor(layer.color),
+            'line-color': layer.options.gradientMode
+              ? [
+                  'interpolate',
+                  ['linear'],
+                  ['line-progress'],
+                  0,
+                  '#3b82f6',  // blue at start
+                  1,
+                  '#ef4444'   // red at end
+                ]
+              : (useGeoJsonStyles
+                  ? ['case', ['has', 'stroke'], ['get', 'stroke'], ['has', 'stroke-color'], ['get', 'stroke-color'], getMapLayerColor(layer.color)]
+                  : getMapLayerColor(layer.color)),
             'line-width': layer.options.strokeWidth || 2,
             'line-opacity': layer.options.strokeOpacity || 1
           },
