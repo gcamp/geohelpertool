@@ -43,6 +43,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
   const { state, actions } = useLayerContext();
   const { showSuccess, showError } = useNotification();
   const lastProgressValuesRef = useRef(new Map<string, number>());
+  const lastStylePropsRef = useRef(new Map<string, string>());
 
   const fitMapToLayers = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -448,14 +449,30 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     });
   }, [state.layers, isMapReady, updateLayerVisibility]);
 
-  // Effect to sync layer colors and styles
+  // Effect to sync layer colors and styles (only when style properties change)
   useEffect(() => {
     const layerManager = layerManagerRef.current;
     if (!layerManager) return;
 
     state.layers.forEach(layer => {
       if (layerManager.hasSource(layer.id)) {
-        layerManager.updateLayerStyle(layer.id, layer);
+        // Create a hash of style-relevant properties
+        const styleProps = JSON.stringify({
+          color: layer.color,
+          gradientMode: layer.options.gradientMode,
+          strokeWidth: layer.options.strokeWidth,
+          strokeOpacity: layer.options.strokeOpacity,
+          fillOpacity: layer.options.fillOpacity,
+          pointRadius: layer.options.pointRadius
+        });
+
+        const lastStyleProps = lastStylePropsRef.current.get(layer.id);
+
+        // Only update style if style properties actually changed
+        if (lastStyleProps !== styleProps) {
+          lastStylePropsRef.current.set(layer.id, styleProps);
+          layerManager.updateLayerStyle(layer.id, layer);
+        }
       }
     });
   }, [state.layers, isMapReady]);
