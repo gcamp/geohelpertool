@@ -231,7 +231,7 @@ export class MapLayerManager {
 
     // Get current source to check if it has lineMetrics
     const source = this.map.getSource(layerGroup.sourceId);
-    const hasLineMetrics = source && (source as any).lineMetrics === true;
+    const hasLineMetrics = source && 'lineMetrics' in source && (source as { lineMetrics?: boolean }).lineMetrics === true;
 
     // If gradient mode is enabled but source doesn't have lineMetrics, recreate source
     if (needsLineMetrics && !hasLineMetrics) {
@@ -348,7 +348,7 @@ export class MapLayerManager {
         };
 
       case 'LineString':
-      case 'MultiLineString':
+      case 'MultiLineString': {
         const linePaint: Record<string, unknown> = {
           'line-width': layer.options.strokeWidth || 2,
           'line-opacity': layer.options.strokeOpacity || 1
@@ -383,6 +383,7 @@ export class MapLayerManager {
             'visibility': layer.visibility ? 'visible' : 'none'
           }
         };
+      }
 
       case 'Polygon':
       case 'MultiPolygon':
