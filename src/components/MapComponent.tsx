@@ -460,47 +460,40 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     });
   }, [state.layers, isMapReady]);
 
-  // Effect to update layer data when it changes
-  useEffect(() => {
-    const layerManager = layerManagerRef.current;
-    if (!layerManager) return;
-
-    state.layers.forEach(layer => {
-      if (layerManager.hasSource(layer.id)) {
-        layerManager.updateSource(layer.id, layer.data);
-      }
-    });
-  }, [state.layers, isMapReady]);
-
-  // Handle progress slider changes
+  // Effect to update layer data and handle progress slider
   useEffect(() => {
     const layerManager = layerManagerRef.current;
     if (!mapRef.current || !layerManager) return;
 
     state.layers.forEach(layer => {
+      if (!layerManager.hasSource(layer.id)) return;
+
       const hasLineString = layer.data.features.some(
         f => f.geometry?.type === 'LineString' || f.geometry?.type === 'MultiLineString'
       );
 
-      if (!hasLineString) return;
+      // Handle progress slider for LineStrings
+      if (hasLineString) {
+        const progress = layer.options.progressSlider ?? 100;
+        const lastProgress = lastProgressValuesRef.current.get(layer.id);
 
-      const progress = layer.options.progressSlider ?? 100;
-      const lastProgress = lastProgressValuesRef.current.get(layer.id);
+        // Only update if progress value changed
+        if (lastProgress !== progress) {
+          lastProgressValuesRef.current.set(layer.id, progress);
 
-      // Only update if progress value changed
-      if (lastProgress === progress) return;
-
-      lastProgressValuesRef.current.set(layer.id, progress);
-
-      if (progress < 100) {
-        // Clip the geometry
-        const clipResult = clipLinesByProgress(layer.data, progress);
-
-        if (clipResult.success && clipResult.data) {
-          layerManager.updateSource(layer.id, clipResult.data);
+          if (progress < 100) {
+            // Clip the geometry
+            const clipResult = clipLinesByProgress(layer.data, progress);
+            if (clipResult.success && clipResult.data) {
+              layerManager.updateSource(layer.id, clipResult.data);
+            }
+          } else {
+            // Show full geometry
+            layerManager.updateSource(layer.id, layer.data);
+          }
         }
       } else {
-        // Show full geometry
+        // For non-LineString layers, just update the source normally
         layerManager.updateSource(layer.id, layer.data);
       }
     });
