@@ -37,14 +37,15 @@ export class MapLayerManager {
    */
   addSource(layerId: string, data: GeoJSON.FeatureCollection): void {
     const sourceId = `layer-source-${layerId}`;
-    
+
     if (this.map.getSource(sourceId)) {
       throw new Error(`Source ${sourceId} already exists`);
     }
 
     this.map.addSource(sourceId, {
       type: 'geojson',
-      data
+      data,
+      lineMetrics: true
     });
 
     this.layerGroups.set(layerId, {
