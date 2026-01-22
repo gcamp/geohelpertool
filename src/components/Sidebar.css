@@ -761,12 +761,73 @@
   border: 1px solid rgba(0, 123, 255, 0.3);
 }
 
+/* Slider Styles */
+.slider-option {
+  margin-top: 8px;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.progress-slider {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  background: #ddd;
+}
+
+.progress-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+}
+
+.progress-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: none;
+}
+
+.progress-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reset-slider-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+.reset-slider-btn:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.reset-slider-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Tablet specific adjustments */
 @media (min-width: 769px) and (max-width: 1024px) {
   .sidebar {
     width: 280px;
   }
-  
+
   .sidebar-content {
     padding: 20px;
   }

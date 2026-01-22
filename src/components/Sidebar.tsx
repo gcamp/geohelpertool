@@ -26,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [colorDropdownOpen, setColorDropdownOpen] = useState<string | null>(null);
+  const [sliderValues, setSliderValues] = useState<Map<string, number>>(new Map());
 
   const convertToFeatureCollection = (geoJson: GeoJSON.GeoJSON): GeoJSON.FeatureCollection => {
     if (geoJson.type === 'FeatureCollection') {
@@ -209,6 +210,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
   const handleGradientToggle = (layerId: string, enabled: boolean) => {
     const newOptions = { gradientMode: enabled };
     actions.updateLayer(layerId, { options: newOptions });
+  };
+
+  const handleProgressSliderChange = (layerId: string, value: number) => {
+    // Update local state immediately for responsive UI
+    setSliderValues(prev => new Map(prev).set(layerId, value));
+
+    // Debounce the actual layer update
+    const timeoutId = setTimeout(() => {
+      actions.updateLayer(layerId, {
+        options: { progressSlider: value }
+      });
+    }, 100);
+
+    // Store timeout for cleanup
+    return () => clearTimeout(timeoutId);
   };
 
   // Close color dropdown when clicking outside
@@ -517,6 +533,32 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                             />
                             <span className="option-text">Show Direction Gradient</span>
                           </label>
+                        </div>
+
+                        <div className="option-item slider-option">
+                          <label className="option-label">
+                            <span className="option-text">
+                              Show Path Progress: {sliderValues.get(layer.id) ?? layer.options.progressSlider ?? 100}%
+                            </span>
+                          </label>
+                          <div className="slider-container">
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={sliderValues.get(layer.id) ?? layer.options.progressSlider ?? 100}
+                              onChange={(e) => handleProgressSliderChange(layer.id, parseInt(e.target.value))}
+                              disabled={!layer.visibility}
+                              className="progress-slider"
+                            />
+                            <button
+                              className="reset-slider-btn"
+                              onClick={() => handleProgressSliderChange(layer.id, 100)}
+                              disabled={!layer.visibility}
+                            >
+                              Reset
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
