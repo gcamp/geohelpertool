@@ -7,6 +7,7 @@ import { detectAndParseLayer } from '../utils/layerTypeDetector';
 import { useNotification } from '../contexts/NotificationContext';
 import { MapLayerManager } from '../utils/mapLayerManager';
 import bbox from '@turf/bbox';
+import { clipLinesByProgress } from '../utils/lineClipping';
 // @ts-expect-error - Used in type annotations
 import type { GeoJSON } from 'geojson';
 import type { MapRef } from 'react-map-gl/maplibre';
@@ -469,6 +470,34 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       }
     });
   }, [state.layers, isMapReady]);
+
+  // Handle progress slider changes
+  useEffect(() => {
+    const layerManager = layerManagerRef.current;
+    if (!mapRef.current || !layerManager) return;
+
+    state.layers.forEach(layer => {
+      const hasLineString = layer.data.features.some(
+        f => f.geometry?.type === 'LineString' || f.geometry?.type === 'MultiLineString'
+      );
+
+      if (!hasLineString) return;
+
+      const progress = layer.options.progressSlider ?? 100;
+
+      if (progress < 100) {
+        // Clip the geometry
+        const clipResult = clipLinesByProgress(layer.data, progress);
+
+        if (clipResult.success && clipResult.data) {
+          layerManager.updateSource(layer.id, clipResult.data);
+        }
+      } else {
+        // Show full geometry
+        layerManager.updateSource(layer.id, layer.data);
+      }
+    });
+  }, [state.layers]);
 
   // Effect to fit map to layers when layers are added
   useEffect(() => {
