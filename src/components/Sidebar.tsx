@@ -26,8 +26,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [colorDropdownOpen, setColorDropdownOpen] = useState<string | null>(null);
-  const [sliderValues, setSliderValues] = useState<Map<string, number>>(new Map());
-  const sliderTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const convertToFeatureCollection = (geoJson: GeoJSON.GeoJSON): GeoJSON.FeatureCollection => {
     if (geoJson.type === 'FeatureCollection') {
@@ -209,29 +207,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
   };
 
   const handleGradientToggle = (layerId: string, enabled: boolean) => {
-    const newOptions = { gradientMode: enabled };
-    actions.updateLayer(layerId, { options: newOptions });
+    actions.updateOptions(layerId, { gradientMode: enabled });
   };
 
   const handleProgressSliderChange = (layerId: string, value: number) => {
-    // Update local state immediately for responsive UI
-    setSliderValues(prev => new Map(prev).set(layerId, value));
-
-    // Clear existing timeout for this layer
-    const existingTimeout = sliderTimeoutRef.current.get(layerId);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
-    }
-
-    // Set new timeout
-    const timeoutId = setTimeout(() => {
-      actions.updateLayer(layerId, {
-        options: { progressSlider: value }
-      });
-      sliderTimeoutRef.current.delete(layerId);
-    }, 100);
-
-    sliderTimeoutRef.current.set(layerId, timeoutId);
+    actions.updateOptions(layerId, { progressSlider: value });
   };
 
   // Close color dropdown when clicking outside
@@ -245,13 +225,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [colorDropdownOpen]);
 
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      sliderTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
-      sliderTimeoutRef.current.clear();
-    };
-  }, []);
 
   return (
     <div 
@@ -434,8 +407,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                               type="checkbox"
                               checked={layer.options.reverseCoordinates || false}
                               onChange={(e) => {
-                                const newOptions = { ...layer.options, reverseCoordinates: e.target.checked };
-                                actions.updateLayer(layer.id, { options: newOptions });
+                                actions.updateOptions(layer.id, { reverseCoordinates: e.target.checked });
                                 
                                 // Re-parse the original content and apply coordinate reversal
                                 const currentContent = layer.originalContent;
@@ -504,8 +476,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                               type="checkbox"
                               checked={layer.options.unescape || false}
                               onChange={(e) => {
-                                const newOptions = { ...layer.options, unescape: e.target.checked };
-                                actions.updateLayer(layer.id, { options: newOptions });
+                                actions.updateOptions(layer.id, { unescape: e.target.checked });
 
                                 // Re-parse the original content with updated unescape option
                                 const currentContent = layer.originalContent;
@@ -553,7 +524,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                         <div className="option-item slider-option">
                           <label className="option-label">
                             <span className="option-text">
-                              Show Path Progress: {sliderValues.get(layer.id) ?? layer.options.progressSlider ?? 100}%
+                              Show Path Progress: {layer.options.progressSlider ?? 100}%
                             </span>
                           </label>
                           <div className="slider-container">
@@ -561,7 +532,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                               type="range"
                               min="0"
                               max="100"
-                              value={sliderValues.get(layer.id) ?? layer.options.progressSlider ?? 100}
+                              value={layer.options.progressSlider ?? 100}
                               onChange={(e) => handleProgressSliderChange(layer.id, parseInt(e.target.value))}
                               disabled={!layer.visibility}
                               className="progress-slider"

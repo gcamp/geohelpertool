@@ -506,10 +506,11 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       const timer = setTimeout(() => {
         fitMapToLayers();
       }, 100); // Small delay to ensure layers are rendered
-      
+
       return () => clearTimeout(timer);
     }
-  }, [state.layers.length, fitMapToLayers]); // Only trigger when layer count changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.layers.length]); // Only trigger when layer count changes, not when fitMapToLayers recreates
 
   return (
     <div ref={containerRef} className="map-container">
