@@ -44,13 +44,31 @@ describe('Polyline Visualization Controls', () => {
         toggleVisibility: vi.fn(),
         updateColor: vi.fn(),
         clearLayers: vi.fn(),
-        updateLayerName: vi.fn()
+        updateLayerName: vi.fn(),
+        updateOptions: vi.fn(),
+        setActiveLayer: vi.fn()
+      },
+      computed: {
+        visibleLayers: [mockLayer],
+        activeLayer: null,
+        availableColors: [],
+        hasLayers: true,
+        layersByType: vi.fn()
+      },
+      utils: {
+        exportLayers: vi.fn(),
+        importLayers: vi.fn(),
+        getLayerById: vi.fn(),
+        validateLayerId: vi.fn()
       }
     };
 
     const mockNotificationValue = {
       showSuccess: mockShowSuccess,
-      showError: mockShowError
+      showError: mockShowError,
+      showNotification: vi.fn(),
+      showWarning: vi.fn(),
+      showInfo: vi.fn()
     };
 
     return render(
@@ -131,13 +149,31 @@ describe('Polyline Visualization Controls', () => {
         toggleVisibility: vi.fn(),
         updateColor: vi.fn(),
         clearLayers: vi.fn(),
-        updateLayerName: vi.fn()
+        updateLayerName: vi.fn(),
+        updateOptions: vi.fn(),
+        setActiveLayer: vi.fn()
+      },
+      computed: {
+        visibleLayers: [],
+        activeLayer: null,
+        availableColors: [],
+        hasLayers: true,
+        layersByType: vi.fn()
+      },
+      utils: {
+        exportLayers: vi.fn(),
+        importLayers: vi.fn(),
+        getLayerById: vi.fn(),
+        validateLayerId: vi.fn()
       }
     };
 
     const mockNotificationValue = {
       showSuccess: mockShowSuccess,
-      showError: mockShowError
+      showError: mockShowError,
+      showNotification: vi.fn(),
+      showWarning: vi.fn(),
+      showInfo: vi.fn()
     };
 
     render(
