@@ -17,6 +17,8 @@
     "@mapbox/polyline": "^1.2.1",
     "@turf/bbox": "^7.2.0",
     "@turf/boolean-valid": "^7.2.0",
+    "@turf/length": "^7.3.2",
+    "@turf/line-slice-along": "^7.3.2",
     "geojson-validation": "^1.0.2",
     "maplibre-gl": "^5.6.1",
     "react": "^19.1.0",
