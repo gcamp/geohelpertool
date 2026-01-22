@@ -1,5 +1,5 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef, useState, useCallback } from 'react';
-import Map, { NavigationControl, ScaleControl } from 'react-map-gl/maplibre';
+import MapGL, { NavigationControl, ScaleControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './MapComponent.css';
 import { useLayerContext } from '../hooks/useLayerContextHook';
@@ -7,6 +7,7 @@ import { detectAndParseLayer } from '../utils/layerTypeDetector';
 import { useNotification } from '../contexts/NotificationContext';
 import { MapLayerManager } from '../utils/mapLayerManager';
 import bbox from '@turf/bbox';
+import { clipLinesByProgress } from '../utils/lineClipping';
 // @ts-expect-error - Used in type annotations
 import type { GeoJSON } from 'geojson';
 import type { MapRef } from 'react-map-gl/maplibre';
@@ -41,6 +42,8 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
   const [isMapReady, setIsMapReady] = useState(false);
   const { state, actions } = useLayerContext();
   const { showSuccess, showError } = useNotification();
+  const lastProgressValuesRef = useRef(new Map<string, number>());
+  const lastStylePropsRef = useRef(new Map<string, string>());
 
   const fitMapToLayers = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -446,29 +449,72 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
     });
   }, [state.layers, isMapReady, updateLayerVisibility]);
 
-  // Effect to sync layer colors and styles
+  // Effect to sync layer colors and styles (only when style properties change)
   useEffect(() => {
     const layerManager = layerManagerRef.current;
     if (!layerManager) return;
 
     state.layers.forEach(layer => {
       if (layerManager.hasSource(layer.id)) {
-        layerManager.updateLayerStyle(layer.id, layer);
+        // Create a hash of style-relevant properties
+        const styleProps = JSON.stringify({
+          color: layer.color,
+          gradientMode: layer.options.gradientMode,
+          strokeWidth: layer.options.strokeWidth,
+          strokeOpacity: layer.options.strokeOpacity,
+          fillOpacity: layer.options.fillOpacity,
+          pointRadius: layer.options.pointRadius
+        });
+
+        const lastStyleProps = lastStylePropsRef.current.get(layer.id);
+
+        // Only update style if style properties actually changed
+        if (lastStyleProps !== styleProps) {
+          lastStylePropsRef.current.set(layer.id, styleProps);
+          layerManager.updateLayerStyle(layer.id, layer);
+        }
       }
     });
   }, [state.layers, isMapReady]);
 
-  // Effect to update layer data when it changes
+  // Effect to update layer data and handle progress slider
   useEffect(() => {
     const layerManager = layerManagerRef.current;
-    if (!layerManager) return;
+    if (!mapRef.current || !layerManager) return;
 
     state.layers.forEach(layer => {
-      if (layerManager.hasSource(layer.id)) {
+      if (!layerManager.hasSource(layer.id)) return;
+
+      const hasLineString = layer.data.features.some(
+        f => f.geometry?.type === 'LineString' || f.geometry?.type === 'MultiLineString'
+      );
+
+      // Handle progress slider for LineStrings
+      if (hasLineString) {
+        const progress = layer.options.progressSlider ?? 100;
+        const lastProgress = lastProgressValuesRef.current.get(layer.id);
+
+        // Only update if progress value changed
+        if (lastProgress !== progress) {
+          lastProgressValuesRef.current.set(layer.id, progress);
+
+          if (progress < 100) {
+            // Clip the geometry
+            const clipResult = clipLinesByProgress(layer.data, progress);
+            if (clipResult.success && clipResult.data) {
+              layerManager.updateSource(layer.id, clipResult.data);
+            }
+          } else {
+            // Show full geometry
+            layerManager.updateSource(layer.id, layer.data);
+          }
+        }
+      } else {
+        // For non-LineString layers, just update the source normally
         layerManager.updateSource(layer.id, layer.data);
       }
     });
-  }, [state.layers, isMapReady]);
+  }, [state.layers]);
 
   // Effect to fit map to layers when layers are added
   useEffect(() => {
@@ -477,14 +523,15 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       const timer = setTimeout(() => {
         fitMapToLayers();
       }, 100); // Small delay to ensure layers are rendered
-      
+
       return () => clearTimeout(timer);
     }
-  }, [state.layers.length, fitMapToLayers]); // Only trigger when layer count changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.layers.length]); // Only trigger when layer count changes, not when fitMapToLayers recreates
 
   return (
     <div ref={containerRef} className="map-container">
-      <Map
+      <MapGL
         ref={mapRef}
         initialViewState={initialViewState}
         style={{ width: '100%', height: '100%' }}
@@ -492,7 +539,7 @@ const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({
       >
         <NavigationControl position="top-right" style={{ zIndex: 1000 }} />
         <ScaleControl position="bottom-left" />
-      </Map>
+      </MapGL>
     </div>
   );
 });

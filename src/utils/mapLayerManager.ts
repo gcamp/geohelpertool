@@ -37,14 +37,15 @@ export class MapLayerManager {
    */
   addSource(layerId: string, data: GeoJSON.FeatureCollection): void {
     const sourceId = `layer-source-${layerId}`;
-    
+
     if (this.map.getSource(sourceId)) {
       throw new Error(`Source ${sourceId} already exists`);
     }
 
     this.map.addSource(sourceId, {
       type: 'geojson',
-      data
+      data,
+      lineMetrics: true
     });
 
     this.layerGroups.set(layerId, {
@@ -222,9 +223,26 @@ export class MapLayerManager {
    * Update layer styling by recreating layers
    */
   updateLayerStyle(layerId: string, layer: Layer): void {
-    // Remove existing layers
-    this.removeLayers(layerId);
-    
+    const layerGroup = this.layerGroups.get(layerId);
+    if (!layerGroup) return;
+
+    // Check if we need lineMetrics (for gradient mode)
+    const needsLineMetrics = layer.options.gradientMode === true;
+
+    // Get current source to check if it has lineMetrics
+    const source = this.map.getSource(layerGroup.sourceId);
+    const hasLineMetrics = source && 'lineMetrics' in source && (source as { lineMetrics?: boolean }).lineMetrics === true;
+
+    // If gradient mode is enabled but source doesn't have lineMetrics, recreate source
+    if (needsLineMetrics && !hasLineMetrics) {
+      const currentData = layer.data;
+      this.removeSource(layerId);
+      this.addSource(layerId, currentData);
+    } else {
+      // Just remove and re-add layers with new styling
+      this.removeLayers(layerId);
+    }
+
     // Add layers with new styling
     this.addLayers(layerId, layer);
   }
@@ -330,23 +348,42 @@ export class MapLayerManager {
         };
 
       case 'LineString':
+      case 'MultiLineString': {
+        const linePaint: Record<string, unknown> = {
+          'line-width': layer.options.strokeWidth || 2,
+          'line-opacity': layer.options.strokeOpacity || 1
+        };
+
+        if (layer.options.gradientMode) {
+          // Use line-gradient for gradients along the line
+          linePaint['line-gradient'] = [
+            'interpolate',
+            ['linear'],
+            ['line-progress'],
+            0,
+            '#3b82f6',  // blue at start
+            1,
+            '#ef4444'   // red at end
+          ];
+        } else {
+          // Use line-color for solid colors
+          linePaint['line-color'] = useGeoJsonStyles
+            ? ['case', ['has', 'stroke'], ['get', 'stroke'], ['has', 'stroke-color'], ['get', 'stroke-color'], getMapLayerColor(layer.color)]
+            : getMapLayerColor(layer.color);
+        }
+
         return {
           id: `${baseId}-lines`,
           sourceId,
           type: 'line',
           geometryType: 'LineString',
           filter: ['==', '$type', 'LineString'],
-          paint: {
-            'line-color': useGeoJsonStyles
-              ? ['case', ['has', 'stroke'], ['get', 'stroke'], ['has', 'stroke-color'], ['get', 'stroke-color'], getMapLayerColor(layer.color)]
-              : getMapLayerColor(layer.color),
-            'line-width': layer.options.strokeWidth || 2,
-            'line-opacity': layer.options.strokeOpacity || 1
-          },
+          paint: linePaint,
           layout: {
             'visibility': layer.visibility ? 'visible' : 'none'
           }
         };
+      }
 
       case 'Polygon':
       case 'MultiPolygon':

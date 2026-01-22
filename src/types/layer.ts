@@ -31,6 +31,8 @@ export interface LayerOptions {
   labelField?: string;
   reverseCoordinates?: boolean;
   unescape?: boolean;
+  gradientMode?: boolean;      // Enable blue→red gradient for LineString
+  progressSlider?: number;     // 0-100, percentage of line visible
   [key: string]: unknown;
 }
 
