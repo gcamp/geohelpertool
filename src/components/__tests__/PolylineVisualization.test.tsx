@@ -31,6 +31,7 @@ const mockLayer = {
 
 describe('Polyline Visualization Controls', () => {
   const mockUpdateLayer = vi.fn();
+  const mockUpdateOptions = vi.fn();
   const mockShowSuccess = vi.fn();
   const mockShowError = vi.fn();
 
@@ -45,7 +46,7 @@ describe('Polyline Visualization Controls', () => {
         updateColor: vi.fn(),
         clearLayers: vi.fn(),
         updateLayerName: vi.fn(),
-        updateOptions: vi.fn(),
+        updateOptions: mockUpdateOptions,
         setActiveLayer: vi.fn()
       },
       computed: {
@@ -96,11 +97,9 @@ describe('Polyline Visualization Controls', () => {
 
     fireEvent.click(checkbox);
 
-    expect(mockUpdateLayer).toHaveBeenCalledWith(
+    expect(mockUpdateOptions).toHaveBeenCalledWith(
       'test-layer',
-      expect.objectContaining({
-        options: { gradientMode: true }
-      })
+      { gradientMode: true }
     );
   });
 
@@ -110,15 +109,10 @@ describe('Polyline Visualization Controls', () => {
 
     fireEvent.change(slider, { target: { value: '50' } });
 
-    // Wait for debounce
-    setTimeout(() => {
-      expect(mockUpdateLayer).toHaveBeenCalledWith(
-        'test-layer',
-        expect.objectContaining({
-          options: { progressSlider: 50 }
-        })
-      );
-    }, 150);
+    expect(mockUpdateOptions).toHaveBeenCalledWith(
+      'test-layer',
+      { progressSlider: 50 }
+    );
   });
 
   it('resets slider to 100% when reset button is clicked', () => {
@@ -127,14 +121,10 @@ describe('Polyline Visualization Controls', () => {
 
     fireEvent.click(resetButton);
 
-    setTimeout(() => {
-      expect(mockUpdateLayer).toHaveBeenCalledWith(
-        'test-layer',
-        expect.objectContaining({
-          options: { progressSlider: 100 }
-        })
-      );
-    }, 150);
+    expect(mockUpdateOptions).toHaveBeenCalledWith(
+      'test-layer',
+      { progressSlider: 100 }
+    );
   });
 
   it('disables slider when layer is not visible', () => {
@@ -150,7 +140,7 @@ describe('Polyline Visualization Controls', () => {
         updateColor: vi.fn(),
         clearLayers: vi.fn(),
         updateLayerName: vi.fn(),
-        updateOptions: vi.fn(),
+        updateOptions: mockUpdateOptions,
         setActiveLayer: vi.fn()
       },
       computed: {
