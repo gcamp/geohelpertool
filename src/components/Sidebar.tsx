@@ -27,6 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
   const [editingName, setEditingName] = useState('');
   const [colorDropdownOpen, setColorDropdownOpen] = useState<string | null>(null);
   const [sliderValues, setSliderValues] = useState<Map<string, number>>(new Map());
+  const sliderTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const convertToFeatureCollection = (geoJson: GeoJSON.GeoJSON): GeoJSON.FeatureCollection => {
     if (geoJson.type === 'FeatureCollection') {
@@ -216,15 +217,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
     // Update local state immediately for responsive UI
     setSliderValues(prev => new Map(prev).set(layerId, value));
 
-    // Debounce the actual layer update
+    // Clear existing timeout for this layer
+    const existingTimeout = sliderTimeoutRef.current.get(layerId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Set new timeout
     const timeoutId = setTimeout(() => {
       actions.updateLayer(layerId, {
         options: { progressSlider: value }
       });
+      sliderTimeoutRef.current.delete(layerId);
     }, 100);
 
-    // Store timeout for cleanup
-    return () => clearTimeout(timeoutId);
+    sliderTimeoutRef.current.set(layerId, timeoutId);
   };
 
   // Close color dropdown when clicking outside
@@ -237,6 +244,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [colorDropdownOpen]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      sliderTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
+      sliderTimeoutRef.current.clear();
+    };
+  }, []);
 
   return (
     <div 
