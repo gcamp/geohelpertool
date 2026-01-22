@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { clipLinesByProgress } from '../lineClipping';
-import type { FeatureCollection, LineString, MultiLineString } from 'geojson';
+import type { FeatureCollection, LineString } from 'geojson';
 
 describe('clipLinesByProgress', () => {
   const simpleLineString: FeatureCollection = {
@@ -31,9 +31,10 @@ describe('clipLinesByProgress', () => {
   it('returns start point at 0%', () => {
     const result = clipLinesByProgress(simpleLineString, 0);
     expect(result.success).toBe(true);
-    expect(result.data?.features[0].geometry.coordinates).toHaveLength(2);
-    expect(result.data?.features[0].geometry.coordinates[0]).toEqual([0, 0]);
-    expect(result.data?.features[0].geometry.coordinates[1]).toEqual([0, 0]);
+    const coords = (result.data?.features[0].geometry as LineString).coordinates;
+    expect(coords).toHaveLength(2);
+    expect(coords[0]).toEqual([0, 0]);
+    expect(coords[1]).toEqual([0, 0]);
   });
 
   it('clips line to approximately 50%', () => {

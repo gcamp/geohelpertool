@@ -4,6 +4,7 @@ import { useLayerContext } from '../hooks/useLayerContextHook';
 import { parseMultiFormat } from '../utils/geoJsonParser';
 import { detectAndParseLayer } from '../utils/layerTypeDetector';
 import { LayerType, ColorPalette } from '../types/layer';
+import type { Layer } from '../types/layer';
 import { useNotification } from '../contexts/NotificationContext';
 // @ts-expect-error - Used in type annotations
 import type { GeoJSON } from 'geojson';
@@ -44,6 +45,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
         }]
       };
     }
+  };
+
+  const hasLineStringGeometry = (layer: Layer): boolean => {
+    return layer.data.features.some(
+      feature => feature.geometry?.type === 'LineString' || feature.geometry?.type === 'MultiLineString'
+    );
   };
 
 
@@ -197,6 +204,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
       value,
       emoji: value
     }));
+  };
+
+  const handleGradientToggle = (layerId: string, enabled: boolean) => {
+    const newOptions = { gradientMode: enabled };
+    actions.updateLayer(layerId, { options: newOptions });
   };
 
   // Close color dropdown when clicking outside
@@ -463,18 +475,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                               onChange={(e) => {
                                 const newOptions = { ...layer.options, unescape: e.target.checked };
                                 actions.updateLayer(layer.id, { options: newOptions });
-                                
+
                                 // Re-parse the original content with updated unescape option
                                 const currentContent = layer.originalContent;
                                 if (currentContent && currentContent.trim()) {
-                                  const parseResult = parseMultiFormat(currentContent, { 
-                                    unescape: e.target.checked 
+                                  const parseResult = parseMultiFormat(currentContent, {
+                                    unescape: e.target.checked
                                   });
                                   if (parseResult.success && parseResult.data) {
                                     const featureCollection = convertToFeatureCollection(parseResult.data);
                                     actions.updateLayer(layer.id, { data: featureCollection });
                                     showSuccess('Polyline Updated', 'Forward slash escaping has been ' + (e.target.checked ? 'removed' : 'preserved'));
-                                    
+
                                     // Recenter map to fit all layers after polyline change
                                     if (onFitToLayers) {
                                       setTimeout(() => {
@@ -488,6 +500,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible = true, onFitToLayers, onWi
                               }}
                             />
                             <span className="option-text">Remove '\` escapes</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Gradient Visualization Option */}
+                    {(layer.type === LayerType.POLYLINE || hasLineStringGeometry(layer)) && (
+                      <div className="layer-options">
+                        <div className="option-item">
+                          <label className="option-label">
+                            <input
+                              type="checkbox"
+                              checked={layer.options.gradientMode || false}
+                              onChange={(e) => handleGradientToggle(layer.id, e.target.checked)}
+                            />
+                            <span className="option-text">Show Direction Gradient</span>
                           </label>
                         </div>
                       </div>
